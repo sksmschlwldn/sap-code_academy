@@ -1,0 +1,172 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8" />
+<title>ZRE2PP0002_TOP</title>
+<style type="text/css">
+.code{ font-family:"Courier New", Courier, monospace; color:#000; font-size:14px; background-color:#F2F4F7 }
+  .codeComment {font-family:"Courier New", Courier, monospace; color:#0000F0; font-size:14px; background-color:#F2F4F7 }
+  .normalBold{ font-family:Arial, Helvetica, sans-serif; color:#000; font-size:12px; font-weight:800 }
+  .normalBoldLarge{ font-family:Arial, Helvetica, sans-serif; color:#000; font-size:16px; font-weight:800 }
+</style>
+<style type="text/css">
+  .normal{ font-family:Arial, Helvetica, sans-serif; color:#000; font-size:12px }
+  .footer{ font-family:Arial, Helvetica, sans-serif; color:#000; font-size:12px; text-align: center }
+  h2{ font-family:Arial, Helvetica, sans-serif; color:#000; font-size:16px; font-weight:800 }
+  h3{ font-family:Arial, Helvetica, sans-serif; color:#000; font-size:14px; font-weight:800 }
+  .outerTable{
+   background-color:#E0E7ED;
+   width:100%;
+   border-top-width: thin;
+   border-right-width: thin;
+   border-right-width: thin;
+   border-left-width: thin;
+   border-top-style: solid;
+   border-right-style: solid;
+   border-bottom-style: solid;
+   border-left-style: solid;
+  }
+  .innerTable{
+   background-color:#F2F4F7;
+   width:100%;
+   border-top-width: thin;
+   border-right-width: thin;
+   border-bottom-width: thin;
+   border-left-width: thin;
+   border-top-style: solid;
+   border-right-style: solid;
+   border-bottom-style: solid;
+   border-left-style: solid;
+  }
+</style>
+</head>
+<body>
+<table class="outerTable">
+  <tr class="normalBoldLarge">
+     <td><h2>Code listing for: ZRE2PP0002_TOP</h2>
+<h3> Description: Include ZRE2PP0002_TOP</h3></td>
+   </tr>
+  <tr>
+     <td>
+     <table class="innerTable">
+       <tr>
+          <td>
+   <div class="codeComment">
+*&---------------------------------------------------------------------*<br />
+*&&nbsp;Include&nbsp;ZRE2PP0002_TOP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;Report&nbsp;ZRE2PP0002<br />
+*&---------------------------------------------------------------------*<br />
+   </div>
+   <div class="code">
+REPORT zre2pp0002 MESSAGE-ID zpe2m.<br />
+<br />
+CLASS lcl_event_handler DEFINITION DEFERRED.<br />
+<br />
+TABLES : zte2pp0002.<br />
+<br />
+DATA :  BEGIN OF gs_bom_h,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;stlnr&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;zte2pp0002-stlnr,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;matnr&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;zte2pp0002-matnr,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;maktx&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;zte2mm0001-maktx,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;werks&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;zte2pp0002-werks,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;bmeng&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;zte2pp0002-bmeng,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;meins&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;zte2pp0002-meins,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;zte2pp0002-status,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;stat_txt(5),<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;style&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;lvc_t_styl,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mark.<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;include&nbsp;structure&nbsp;<a&nbsp;href&nbsp;="zse2timestamp/dictionary-zse2timestamp.html">zse2timestamp</a>.<br />
+DATA:    END OF gs_bom_h,<br />
+<br />
+gt_bom_h LIKE TABLE OF gs_bom_h,<br />
+<br />
+&nbsp;&nbsp;BEGIN&nbsp;OF&nbsp;gs_bom_i,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;stlnr&nbsp;TYPE&nbsp;zte2pp0003-stlnr,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;posnr&nbsp;TYPE&nbsp;zte2pp0003-posnr,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;idnrk&nbsp;TYPE&nbsp;zte2pp0003-idnrk,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;maktx&nbsp;TYPE&nbsp;zte2mm0001-maktx,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;menge&nbsp;TYPE&nbsp;zte2pp0003-menge,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;meins&nbsp;TYPE&nbsp;zte2pp0003-meins,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;style&nbsp;TYPE&nbsp;lvc_t_styl,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;mark.<br />
+&nbsp;&nbsp;&nbsp;&nbsp;include&nbsp;structure&nbsp;<a&nbsp;href&nbsp;="zse2timestamp/dictionary-zse2timestamp.html">zse2timestamp</a>.<br />
+DATA:    END OF gs_bom_i,<br />
+<br />
+gt_bom_i        LIKE TABLE OF gs_bom_i,<br />
+<br />
+&nbsp;&nbsp;gt_bom_i_del&nbsp;&nbsp;&nbsp;&nbsp;LIKE&nbsp;TABLE&nbsp;OF&nbsp;zte2pp0003,<br />
+&nbsp;&nbsp;gt_bom_h_del&nbsp;&nbsp;&nbsp;&nbsp;LIKE&nbsp;TABLE&nbsp;OF&nbsp;zte2pp0002,<br />
+<br />
+&nbsp;&nbsp;gv_sel_bom&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;zte2pp0003-stlnr,&nbsp;"&nbsp;선택된&nbsp;BOM&nbsp;HEADER<br />
+&nbsp;&nbsp;gv_del_bom&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;zte2pp0003-stlnr,&nbsp;"&nbsp;삭제될&nbsp;BOM<br />
+<br />
+&nbsp;&nbsp;gv_okcode&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;sy-ucomm,<br />
+<br />
+&nbsp;&nbsp;gv_toggle_state&nbsp;TYPE&nbsp;i,<br />
+&nbsp;&nbsp;gv_mode,<br />
+&nbsp;&nbsp;gv_state&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;i,<br />
+<br />
+&nbsp;&nbsp;BEGIN&nbsp;OF&nbsp;gs_bom_new_h,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;stlnr&nbsp;&nbsp;TYPE&nbsp;zte2pp0002-stlnr,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;werks&nbsp;&nbsp;TYPE&nbsp;zte2pp0002-werks,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;matnr&nbsp;&nbsp;TYPE&nbsp;zte2pp0002-matnr,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;maktx&nbsp;&nbsp;TYPE&nbsp;zte2mm0001-maktx,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;bmeng&nbsp;&nbsp;TYPE&nbsp;zte2pp0002-bmeng,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;meins&nbsp;&nbsp;TYPE&nbsp;zte2pp0002-meins,<br />
+&nbsp;&nbsp;&nbsp;&nbsp;status&nbsp;TYPE&nbsp;zte2pp0002-status,<br />
+&nbsp;&nbsp;END&nbsp;OF&nbsp;gs_bom_new_h.<br />
+<br />
+   </div>
+   <div class="codeComment">
+*&nbsp;&nbsp;BEGIN&nbsp;OF&nbsp;gs_bom_new_i,<br />
+*&nbsp;&nbsp;&nbsp;&nbsp;stlnr&nbsp;TYPE&nbsp;zte2pp0003-stlnr,<br />
+*&nbsp;&nbsp;&nbsp;&nbsp;posnr&nbsp;TYPE&nbsp;zte2pp0003-posnr,<br />
+*&nbsp;&nbsp;&nbsp;&nbsp;idnrk&nbsp;TYPE&nbsp;zte2pp0003-idnrk,<br />
+*&nbsp;&nbsp;&nbsp;&nbsp;maktx&nbsp;TYPE&nbsp;zte2mm0001-maktx,<br />
+*&nbsp;&nbsp;&nbsp;&nbsp;menge&nbsp;TYPE&nbsp;zte2pp0003-menge,<br />
+*&nbsp;&nbsp;&nbsp;&nbsp;meins&nbsp;TYPE&nbsp;zte2pp0003-meins,<br />
+*&nbsp;&nbsp;&nbsp;&nbsp;mark,<br />
+*&nbsp;&nbsp;END&nbsp;OF&nbsp;gs_bom_new_i,<br />
+<br />
+*&nbsp;&nbsp;gt_bom_new_i&nbsp;LIKE&nbsp;TABLE&nbsp;OF&nbsp;gs_bom_new_i.<br />
+<br />
+   </div>
+   <div class="code">
+DATA :<br />
+&nbsp;&nbsp;gcl_container_h&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;REF&nbsp;TO&nbsp;cl_gui_custom_container,<br />
+&nbsp;&nbsp;gcl_container_i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;REF&nbsp;TO&nbsp;cl_gui_custom_container,<br />
+&nbsp;&nbsp;gcl_grid_h&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;REF&nbsp;TO&nbsp;cl_gui_alv_grid,<br />
+&nbsp;&nbsp;gcl_grid_i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;REF&nbsp;TO&nbsp;cl_gui_alv_grid,<br />
+&nbsp;&nbsp;gcl_handler&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;REF&nbsp;TO&nbsp;lcl_event_handler,<br />
+&nbsp;&nbsp;gs_fcat&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;lvc_s_fcat,<br />
+&nbsp;&nbsp;gt_fcat_h&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;lvc_t_fcat,<br />
+&nbsp;&nbsp;gt_fcat_i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;lvc_t_fcat,<br />
+&nbsp;&nbsp;gs_layout&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;lvc_s_layo,<br />
+&nbsp;&nbsp;gs_variant&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;disvariant,<br />
+&nbsp;&nbsp;gs_stable&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;lvc_s_stbl,<br />
+&nbsp;&nbsp;gs_row&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;lvc_s_row,<br />
+&nbsp;&nbsp;gt_row&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;lvc_t_row,<br />
+&nbsp;&nbsp;gt_exclude&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;ui_functions,<br />
+&nbsp;&nbsp;gs_alv_toolbar&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;stb_button,<br />
+<br />
+&nbsp;&nbsp;gcl_container_doc_m&nbsp;TYPE&nbsp;REF&nbsp;TO&nbsp;cl_gui_custom_container,<br />
+&nbsp;&nbsp;gcl_container_doc_c&nbsp;TYPE&nbsp;REF&nbsp;TO&nbsp;cl_gui_custom_container,<br />
+&nbsp;&nbsp;gcl_document_m&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;REF&nbsp;TO&nbsp;cl_dd_document,<br />
+&nbsp;&nbsp;gcl_document_c&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;REF&nbsp;TO&nbsp;cl_dd_document.<br />
+<br />
+   </div>
+   <div class="codeComment">
+*&nbsp;&nbsp;gcl_container_new_i&nbsp;TYPE&nbsp;REF&nbsp;TO&nbsp;cl_gui_custom_container,<br />
+*&nbsp;&nbsp;gcl_grid_new_i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;REF&nbsp;TO&nbsp;cl_gui_alv_grid,<br />
+*&nbsp;&nbsp;gt_fcat_new_i&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TYPE&nbsp;lvc_t_fcat.<br />
+            </div>
+          </td>
+        </tr>
+      </table>
+      </td>
+      </tr>
+   <tr>
+<td class="footer">Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758</td>
+   </tr>
+</table>
+</body>
+</html>
