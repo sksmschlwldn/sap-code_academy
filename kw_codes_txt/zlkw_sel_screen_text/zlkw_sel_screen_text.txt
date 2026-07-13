@@ -1,0 +1,26 @@
+*&---------------------------------------------------------------------*
+*& Report ZLKW_SEL_SCREEN_TEXT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE zlkw_sel_screen_text_top                .    " Global Data
+
+INCLUDE zlkw_sel_screen_text_s01                .  " Selection Screen
+INCLUDE zlkw_sel_screen_text_f01                .  " FORM-Routines
+
+AT SELECTION-SCREEN OUTPUT.
+  PERFORM set_carrname.
+
+*Text elements
+*----------------------------------------------------------
+* T01 Selection Condition
+* T02 Airline
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_CARR D       .
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

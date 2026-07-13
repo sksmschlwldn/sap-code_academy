@@ -1,0 +1,45 @@
+*&---------------------------------------------------------------------*
+*& Module Pool      SAPMZLKW_SEL_SCREEN
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE Z27SAPMZLKW_SEL_SCREEN_TOP.
+*INCLUDE sapmzlkw_sel_screen_top                 .    " Global Data
+
+INCLUDE Z27SAPMZLKW_SEL_SCREEN_S01.
+*INCLUDE sapmzlkw_sel_screen_s01                 .  " Selection Screen
+INCLUDE Z27SAPMZLKW_SEL_SCREEN_O01.
+*INCLUDE sapmzlkw_sel_screen_o01                 .  " PBO-Modules
+INCLUDE Z27SAPMZLKW_SEL_SCREEN_I01.
+*INCLUDE sapmzlkw_sel_screen_i01                 .  " PAI-Modules
+INCLUDE Z27SAPMZLKW_SEL_SCREEN_F01.
+*INCLUDE sapmzlkw_sel_screen_f01                 .  " FORM-Routines
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [C5] 100번 스크린에서 셀렉션 스크린 사용법
+
+*Text elements
+*----------------------------------------------------------
+* B01 @10@ Search
+* T01 Selection Condition
+* T02 Connection
+* T03 @10@ display
+* T04 @FL@ 입고
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_CARR D       .
+* SO_CONN D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

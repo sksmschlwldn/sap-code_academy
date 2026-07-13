@@ -1,0 +1,382 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_ALV_TREE_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form get_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_data .
+
+  CLEAR   gs_data.
+  REFRESH gt_data.
+
+  SELECT a~carrname
+         b~carrid b~connid b~countryfr b~countryto b~cityfrom b~cityto
+         c~fldate c~price  c~currency c~planetype
+    INTO CORRESPONDING FIELDS OF TABLE gt_data
+    FROM scarr AS a
+   INNER JOIN spfli AS b
+      ON a~carrid = b~carrid
+   INNER JOIN sflight AS c
+      ON b~carrid = c~carrid
+     AND b~connid = c~connid
+   WHERE a~carrid IN so_carr
+     AND b~connid IN so_conn.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Data not found'.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_tree_fcat .
+
+  PERFORM set_fcat USING :
+  'CARRNAME'    ' '   'SCARR'     'CARRNAME',
+  'CONNID'      ' '   'SPFLI'     'CONNID',
+  'FLDATE'      ' '   'SFLIGHT'   'FLDATE',
+  'COUNTRYFR'   ' '   'SPFLI'     'COUNTRYFR',
+  'COUNTRYTO'   ' '   'SPFLI'     'COUNTRYTO',
+  'CITYFROM'    ' '   'SPFLI'     'CITYFROM',
+  'CITYTO'      ' '   'SPFLI'     'CITYTO',
+  'PRICE'       ' '   'SFLIGHT'   'PRICE',
+  'CURRENCY'    ' '   'SFLIGHT'   'CURRENCY',
+  'PLANETYPE'   ' '   'SFLIGHT'   'PLANETYPE'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat USING pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'PRICE'.
+      gs_fcat-cfieldname = 'CURRENCY'.
+      gs_fcat-do_sum     = 'X'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_object .
+
+  DATA l_hirarchy_header TYPE treev_hhdr.
+
+  l_hirarchy_header-heading   = '항공사'.
+  l_hirarchy_header-width     = '25'.
+  l_hirarchy_header-width_pix = 'X'.
+
+  gcl_container = NEW cl_gui_custom_container(
+    container_name = 'GCL_CONTAINER'
+  ).
+
+  CREATE OBJECT gcl_tree
+    EXPORTING
+      parent              = gcl_container
+      node_selection_mode = cl_gui_column_tree=>node_sel_mode_multiple
+      item_selection      = 'X'
+      no_html_header      = 'X'
+      no_toolbar          = space.
+
+  CALL METHOD gcl_tree->get_registered_events
+    IMPORTING
+      events = gt_event.
+
+  gs_event-eventid    = cl_gui_column_tree=>eventid_node_double_click.
+  gs_event-appl_event = 'X'.
+
+  APPEND gs_event TO gt_event.
+
+  CALL METHOD gcl_tree->set_registered_events
+    EXPORTING
+      events = gt_event.
+
+  IF gcl_handler IS NOT BOUND.
+
+    gcl_handler = NEW lcl_event_handler( ).
+
+  ENDIF.
+
+  SET HANDLER : gcl_handler->handle_double_click FOR gcl_tree.
+
+  gs_variant-report = sy-repid.
+
+  CALL METHOD gcl_tree->set_table_for_first_display
+    EXPORTING
+      i_save              = 'A'
+      is_variant          = gs_variant
+      is_hierarchy_header = l_hirarchy_header
+    CHANGING
+      it_outtab           = gt_data
+      it_fieldcatalog     = gt_fcat.
+
+  PERFORM get_data.
+  PERFORM make_hierarchy.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_hierarchy
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM make_hierarchy .
+
+  DATA : lv_first.
+
+  DATA : BEGIN OF ls_carrid,
+           carrid TYPE scarr-carrid,
+         END OF ls_carrid,
+
+         lt_carrid LIKE TABLE OF ls_carrid,
+
+         BEGIN OF ls_connid,
+           carrid TYPE scarr-carrid,
+           connid TYPE sflight-connid,
+         END OF ls_connid,
+
+         lt_connid   LIKE TABLE OF ls_connid,
+         lt_data     LIKE TABLE OF gs_data,
+
+         lv_level_1  TYPE lvc_nkey,
+         lv_level_2  TYPE lvc_nkey,
+         lv_node_key TYPE lvc_nkey,
+         lv_tabix    TYPE sy-tabix,
+
+* 검색 itab 구성키 위한 변수들
+         lv_key_1    TYPE tv_nodekey,
+         lv_key_2    TYPE tv_nodekey,
+         lv_cnt      TYPE sy-tabix.
+
+  CLEAR   : ls_carrid, ls_connid, lv_first, lv_cnt, lv_key_1, lv_key_2.
+  REFRESH : lt_data,   lt_carrid, lt_connid.
+
+  APPEND LINES OF gt_data TO lt_data.
+
+* 트리구성시 gt_data에 노드가 쌓이는 구조다
+*그래서 기존 데이터는 lt_data에 보관 후 gt_data에 다시 쌓는다
+  REFRESH gt_data.
+
+  SORT lt_data BY carrid connid fldate.
+
+  lt_carrid = CORRESPONDING #( lt_data ).
+  lt_connid = CORRESPONDING #( lt_data ).
+
+  SORT : lt_carrid BY carrid,
+         lt_connid BY carrid connid.
+
+  DELETE ADJACENT DUPLICATES FROM : lt_carrid COMPARING carrid,
+                                    lt_connid COMPARING carrid connid.
+
+  LOOP AT lt_carrid INTO ls_carrid.
+
+    READ TABLE lt_connid INTO ls_connid WITH KEY carrid = ls_carrid-carrid
+    BINARY SEARCH.
+
+    IF sy-subrc NE 0.
+      CONTINUE.
+    ENDIF.
+
+    lv_tabix = sy-tabix.
+
+    lv_cnt  += 1.
+    lv_key_1 = lv_cnt.
+
+    READ TABLE lt_data INTO gs_data WITH KEY carrid = ls_carrid-carrid
+                                    BINARY SEARCH.
+
+    IF sy-subrc NE 0.
+      CONTINUE.
+    ENDIF.
+
+* Level 1 Node
+    PERFORM add_node USING gs_data gs_data-carrid ' ' lv_level_1.
+
+    LOOP AT lt_connid INTO ls_connid FROM lv_tabix WHERE carrid = ls_carrid-carrid.
+
+      READ TABLE lt_data INTO gs_data WITH KEY carrid = ls_connid-carrid
+                                               connid = ls_connid-connid
+                                               BINARY SEARCH.
+      IF sy-subrc NE 0.
+        CONTINUE.
+      ENDIF.
+
+      lv_tabix = sy-tabix.
+
+      CLEAR lv_first.
+
+      LOOP AT lt_data INTO gs_data FROM lv_tabix WHERE carrid = ls_connid-carrid
+                                                   AND connid = ls_connid-connid.
+
+        IF lv_first IS INITIAL.
+
+* Level 2 Node
+          PERFORM add_node USING gs_data gs_data-connid lv_level_1 lv_level_2.
+
+          lv_first = 'X'.
+
+          lv_cnt += 1.
+          lv_key_2 = lv_cnt.
+
+        ENDIF.
+
+* Child Node
+        lv_cnt += 1.
+
+        PERFORM add_node USING gs_data gs_data-fldate lv_level_2 lv_node_key.
+
+        gs_node_key = CORRESPONDING #( gs_data ).
+        gs_node_key = VALUE #( BASE gs_node_key
+                               node_key_1 = lv_key_1
+                               node_key_2 = lv_key_2 ).
+
+        APPEND gs_node_key TO gt_node_key.
+        CLEAR  gs_node_key.
+
+      ENDLOOP.
+
+    ENDLOOP.
+
+  ENDLOOP.
+
+  CALL METHOD : gcl_tree->update_calculations,
+                gcl_tree->frontend_update,
+                gcl_tree->column_optimize.
+
+  SORT gt_node_key BY node_key_1 node_key_2.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form add_node
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_DATA
+*&      --> P_
+*&      --> GS_DATA_CARRID
+*&---------------------------------------------------------------------*
+FORM add_node USING ps_data      LIKE gs_data
+                    pv_text
+                    pv_relat_key TYPE lvc_nkey
+                    pv_node_key  TYPE lvc_nkey.
+
+  DATA : lv_node_text  TYPE lvc_value.
+
+  lv_node_text  = pv_text.
+
+  CALL METHOD gcl_tree->add_node
+    EXPORTING
+      i_relat_node_key = pv_relat_key
+      i_relationship   = cl_gui_column_tree=>relat_last_child
+      i_node_text      = lv_node_text
+      is_outtab_line   = ps_data
+*     is_node_layout   = ls_node
+*     it_item_layout   = lt_item_layout
+    IMPORTING
+      e_new_node_key   = pv_node_key.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_double_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> NODE_KEY
+*&---------------------------------------------------------------------*
+FORM
+handle_double_click  USING pv_node_key TYPE lvc_nkey.
+
+  MESSAGE i000 WITH pv_node_key.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form expand_tree
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM expand_tree .
+
+  DATA : lv_node_key TYPE tv_nodekey,
+         lv_sel_key  TYPE lvc_nkey.
+
+  IF gs_input-fldate IS NOT INITIAL.
+
+    READ TABLE gt_node_key INTO gs_node_key WITH KEY fldate = gs_input-fldate.
+
+    lv_node_key = gs_node_key-node_key_2.
+
+  ELSEIF gs_input-connid IS NOT INITIAL.
+
+    READ TABLE gt_node_key INTO gs_node_key WITH KEY connid = gs_input-connid.
+
+    lv_node_key = gs_node_key-node_key_2.
+
+  ELSE.
+
+    READ TABLE gt_node_key INTO gs_node_key WITH KEY carrid = gs_input-carrid.
+
+    lv_node_key = gs_node_key-node_key_1.
+
+  ENDIF.
+
+  gcl_tree->collapse_all_nodes( ).
+
+  gcl_tree->expand_node(
+    EXPORTING
+      i_node_key          = lv_node_key
+      i_expand_subtree    = 'X'
+    EXCEPTIONS
+      failed              = 1
+      illegal_level_count = 2
+      cntl_system_error   = 3
+      node_not_found      = 4
+      cannot_expand_leaf  = 5
+      OTHERS              = 6 ).
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Expand Fail' DISPLAY LIKE 'E'.
+  ENDIF.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

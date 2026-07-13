@@ -1,0 +1,21 @@
+*&---------------------------------------------------------------------*
+*& Include ZLKW_CALENDAR_TOP                    - Module Pool      ZLKW_CALENDAR
+*&---------------------------------------------------------------------*
+PROGRAM zlkw_calendar MESSAGE-ID oo.
+
+TYPE-POOLS : cnca.
+
+DATA : gv_okcode TYPE sy-ucomm.
+
+DATA : gt_event        TYPE cntl_simple_events,
+       gcl_container   TYPE REF TO cl_gui_custom_container,
+       gcl_splitter    TYPE REF TO cl_gui_splitter_container,
+       gcl_container_t TYPE REF TO cl_gui_container,
+       gcl_container_b TYPE REF TO cl_gui_container,
+       gcl_container_p TYPE REF TO cl_gui_container,
+       gcl_calendar_t  TYPE REF TO cl_gui_calendar,
+       gcl_calendar_b  TYPE REF TO cl_gui_calendar,
+       gcl_calendar_p  TYPE REF TO cl_gui_calendar.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

@@ -1,0 +1,63 @@
+*&---------------------------------------------------------------------*
+*& Report ZRE2PP0005
+*&---------------------------------------------------------------------*
+*&
+*& Title : [PP] 생산계획 생성
+*& Author : 최지우 (NCODE-E-27)
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE zre2pp0006_top.
+
+INCLUDE zre2pp0006_s01.
+INCLUDE zre2pp0006_c01.
+INCLUDE zre2pp0006_o01.
+INCLUDE zre2pp0006_i01.
+INCLUDE zre2pp0006_f01.
+
+INITIALIZATION.
+  PERFORM init_param.
+  PERFORM set_btn.
+
+AT SELECTION-SCREEN.
+  PERFORM scr_command.
+  PERFORM spmon_check.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR pa_fname.
+  PERFORM get_fname.
+
+START-OF-SELECTION.
+  PERFORM upload_file.
+  PERFORM set_style.
+*  PERFORM set_default.
+
+  CALL SCREEN '0100'.
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [PP] 생산계획 생성
+
+*Text elements
+*----------------------------------------------------------
+* E01 폼을 찾지 못했습니다.
+* E02 업로드 할 파일이 비어있습니다.
+* M01 템플릿 다운로드
+* M03 파일 선택이 취소되었습니다.
+* MO2 생산 계획 업로드 양식
+* T01 생산 계획 업로드
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_FNAME         생산계획 엑셀 업로드
+* PA_SPMON         생산계획 연월
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZPE2M
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

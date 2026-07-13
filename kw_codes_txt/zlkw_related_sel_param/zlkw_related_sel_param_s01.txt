@@ -1,0 +1,10 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_RELATED_SEL_PARAM_S01
+*&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK bl1 WITH FRAME TITLE TEXT-t01.
+  PARAMETERS : pa_carr TYPE spfli-carrid,
+               pa_conn TYPE spfli-connid.
+SELECTION-SCREEN END OF BLOCK bl1.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

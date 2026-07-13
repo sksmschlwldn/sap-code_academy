@@ -1,0 +1,48 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZLKW_CALENDAR_C01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Class lcl_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION FINAL.
+  PUBLIC SECTION.
+
+    CLASS-METHODS :
+      handle_calendar_t FOR EVENT date_selected OF cl_gui_calendar
+        IMPORTING
+          date_begin
+          date_end
+          selection_table,
+
+      handle_calendar_b FOR EVENT date_selected OF cl_gui_calendar
+        IMPORTING
+          date_begin
+          date_end
+          selection_table.
+
+ENDCLASS.
+*&---------------------------------------------------------------------*
+*& Class (Implementation) lcl_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler IMPLEMENTATION.
+
+  METHOD handle_calendar_t.
+
+    PERFORM handle_calendar_t USING date_begin date_end selection_table.
+
+  ENDMETHOD.
+
+  METHOD handle_calendar_b.
+
+    PERFORM handle_calendar_b USING date_begin date_end selection_table.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

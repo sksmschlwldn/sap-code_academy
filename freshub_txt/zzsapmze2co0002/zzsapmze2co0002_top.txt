@@ -1,0 +1,217 @@
+*&---------------------------------------------------------------------*
+*& Include SAPMZE2CO0002_TOP                        - Module Pool      SAPMZE2CO0002
+*&---------------------------------------------------------------------*
+PROGRAM zzsapmze2co0002 MESSAGE-ID zpe2m.
+
+CLASS lcl_event_handler DEFINITION DEFERRED.
+
+DATA : BEGIN OF gs_search, " 검색 조건 ( 표준 원가 등록 )
+         bukrs TYPE zte2co0005-bukrs,
+         werks TYPE zte2co0005-werks,
+         bdatj TYPE zte2co0005-bdatj,
+         poper TYPE zte2co0005-poper,
+       END OF gs_search,
+
+       BEGIN OF gs_matnr, " 원가산정이 필요한 자재(생산품) 리스트
+         status TYPE icon_d, " 아이콘 ( 원가산정 이미됨 or 아직안됨)
+         matnr  TYPE zte2mm0001-matnr,
+         maktx  TYPE zte2mm0001-maktx,
+         werks  TYPE zte2mm0002-werks, " 공장코드
+         name1  TYPE zte2mm0002-name1, "공장명
+         bdatj  TYPE zte2co0005-bdatj, " 산정연도
+         poper  TYPE zte2co0005-poper, " 월
+       END OF gs_matnr,
+
+       gt_matnr LIKE TABLE OF gs_matnr,
+
+       BEGIN OF gs_cost_detail,
+         matnr TYPE zte2mm0001-matnr, " 자재코드
+         maktx TYPE zte2mm0001-maktx, " 자재명
+         werks TYPE zte2co0005-werks, " 플랜트
+         bdatj TYPE zte2co0005-bdatj, " 자재평가연도
+         poper TYPE zte2co0005-poper, " 월
+         peinh TYPE zte2co0005-peinh, " 단위 수량
+         meins TYPE zte2co0005-meins, " 단위
+         dmatl TYPE zte2co0005-dmatl, " 재료비
+         dlabr TYPE zte2co0005-dlabr, " 노무비
+         mohad TYPE zte2co0005-mohad, " 간접비
+         stprs TYPE zte2co0005-stprs, " 표준원가 (합계)
+         waers TYPE zte2co0005-waers, " 통화키
+         vadat TYPE zte2co0005-vadat, " 산정 날짜
+       END OF gs_cost_detail,
+
+**********************************************************************
+*  트리 데이터
+**********************************************************************
+       BEGIN OF gs_cost,
+         bukrs TYPE zte2co0005-bukrs, " 회사코드
+         matnr TYPE zte2co0005-matnr, " 자재번호
+         maktx TYPE zte2mm0001-maktx, " 자재명
+         werks TYPE zte2co0005-werks, " 플랜트
+         bdatj TYPE zte2co0005-bdatj, " 연도
+         poper TYPE zte2co0005-poper, " 월 (기간)
+         peinh TYPE zte2co0005-peinh, " 수량 단위
+         meins TYPE zte2co0005-meins, " 단위
+         dmatl TYPE zte2co0005-dmatl, " 재료비
+         dlabr TYPE zte2co0005-dlabr, " 노무비
+         mohad TYPE zte2co0005-mohad, " 제조간접비
+         stprs TYPE zte2co0005-stprs, " 표준원가(합계)
+         waers TYPE zte2co0005-waers, " 통화키
+         vadat TYPE zte2co0005-vadat, " 원가 산정일
+       END OF gs_cost,
+
+       gt_cost  LIKE TABLE OF gs_cost,
+
+       " 트리 검색용
+       gv_year  TYPE zte2co0005-bdatj,
+       gv_poper TYPE zte2co0005-poper,
+
+       BEGIN OF gs_node_key,
+         node_key_1 TYPE tv_nodekey,  "Level1 node key
+         node_key_2 TYPE tv_nodekey,  "Level2 node key
+         year       TYPE zte2co0005-bdatj,
+         poper      TYPE zte2co0005-poper,
+       END OF gs_node_key,
+       gt_node_key LIKE TABLE OF gs_node_key,
+
+       BEGIN OF gs_year,
+         bdatj TYPE zte2co0005-bdatj,
+       END OF gs_year,
+       gt_year LIKE TABLE OF gs_year,
+
+       BEGIN OF gs_month,
+         bdatj TYPE zte2co0005-bdatj,
+         poper TYPE zte2co0005-poper,
+       END OF gs_month,
+       gt_month LIKE TABLE OF gs_month,
+
+**********************************************************************
+* 재료비
+**********************************************************************
+       BEGIN OF gs_bom_cost,
+         matnr     TYPE zte2pp0003-idnrk,
+         maktx     TYPE zte2mm0001-maktx,
+         mtart     TYPE zte2mm0001-mtart,
+         " 완제품 1개 생산 기준
+         bmeng     TYPE zte2pp0003-menge, " 소요량
+         meins     TYPE zte2pp0003-meins, " 소요량 단위
+         dmbtr     TYPE zte2co0005-stprs, " 단위당 금액
+         waers     TYPE zte2co0005-waers, " 통화키
+         dislf     TYPE zte2mm0001-dislf,
+         meins_u   TYPE zte2mm0001-meins,
+         ntgew     TYPE zte2mm0001-ntgew,
+         stprs     TYPE zte2mm0021-stprs,
+         dmbtr_raw TYPE zte2co0005-stprs,
+         stk_qty   TYPE zte2pp0003-menge,
+         stk_unit  TYPE zte2pp0003-meins,
+*         " 주문(구매) 기준
+*         pur_qty   TYPE zte2pp0003-menge, " 구매수량
+*         pur_unit  TYPE zte2pp0003-meins, " 구매단위
+*         pur_amt   TYPE zte2co0005-stprs, " 구매금액
+*         pur_waers TYPE zte2co0005-waers, " 통화키
+       END OF gs_bom_cost,
+
+       gt_bom_cost LIKE TABLE OF gs_bom_cost,
+
+**********************************************************************
+* 노무비
+**********************************************************************
+       BEGIN OF gs_labor_cost,
+         vornr    TYPE zte2pp0005-vornr,    " 항목 번호
+         arbpl    TYPE zte2pp0001-arbpl, " 작업장
+         arbpltxt TYPE zte2pp0001-ktext, " 작업장명
+         opertext TYPE zte2pp0005-ltxa1,  " 공정명
+         stdtime  TYPE zte2pp0005-vgw02, " 작업시간
+         timeunit TYPE zte2pp0005-vge02, " 시간 단위
+         price    TYPE zte2co0004-tkg00, " 작업시간당 노무비
+         waers    TYPE zte2co0004-waers, " 가격 단위
+         baseqty  TYPE zte2pp0005-bmsch, " 기준수량
+         meins    TYPE zte2pp0005-meins, "수량 단위
+         " 활동 유형 저장
+         lstar1   TYPE zte2pp0005-lstar,
+         lstar2   TYPE zte2pp0005-lstar,
+         lstar3   TYPE zte2pp0005-lstar,
+         " 활동 단가 저장
+         price1   TYPE zte2co0004-tkg00,
+         price2   TYPE zte2co0004-tkg00,
+         price3   TYPE zte2co0004-tkg00,
+       END OF gs_labor_cost,
+
+       gt_labor_cost LIKE TABLE OF gs_labor_cost,
+
+**********************************************************************
+*  간접비 - 임시 데이터 저장용
+       BEGIN OF gs_ind_tmp,
+         arbpl      TYPE zte2pp0001-arbpl,
+         begzt      TYPE zte2pp0001-begzt,
+         endzt      TYPE zte2pp0001-endzt,
+         kostl      TYPE zte2pp0001-kostl,
+         plnnr      TYPE zte2pp0005-plnnr,
+         vornr      TYPE zte2pp0005-vornr,
+         vgw02      TYPE zte2pp0005-vgw02,
+         vge02      TYPE zte2pp0005-vge02,
+         bmsch      TYPE zte2pp0005-bmsch,
+         meins_quan TYPE zte2pp0005-meins,
+         belnr      TYPE zte2co0006-belnr,
+         buzei      TYPE zte2co0006-buzei,
+         gjahr      TYPE zte2co0006-gjahr,
+         perio      TYPE zte2co0006-perio,
+         wkg00      TYPE zte2co0006-wkg00,
+         waers      TYPE zte2co0006-waers,
+         ref_bn     TYPE zte2co0006-ref_bn,
+       END OF gs_ind_tmp,
+
+       gt_ind_tmp LIKE TABLE OF gs_ind_tmp,
+
+* 간접비 - 실제 화면 ALV 용
+       BEGIN OF gs_indirect_cost,
+         ref_bn      TYPE zte2co0006-ref_bn,
+         ref_txt     TYPE zte2co0013-text,
+         wkg00       TYPE zte2co0006-wkg00,
+         waers       TYPE zte2co0006-waers,
+       END OF gs_indirect_cost,
+
+       gt_indirect_cost LIKE TABLE OF gs_indirect_cost,
+
+**********************************************************************
+
+       gv_okcode        TYPE sy-ucomm.
+
+" 등록할 생산품 목록
+DATA : gcl_container_mat      TYPE REF TO cl_gui_custom_container,
+       gcl_grid_mat           TYPE REF TO cl_gui_alv_grid,
+       gt_fcat_mat            TYPE lvc_t_fcat,
+       gt_row_mat             TYPE lvc_t_row,
+       " 표준원가 ALV Tree
+       gcl_container_tree     TYPE REF TO cl_gui_custom_container,
+       gcl_tree               TYPE REF TO cl_gui_alv_tree,
+       gt_fcat_tree           TYPE lvc_t_fcat,
+       " 하단 상세 splitter
+       gcl_container_split    TYPE REF TO cl_gui_custom_container,
+       gcl_splitter           TYPE REF TO cl_gui_splitter_container,
+       " BOM 이용한 재료비
+       gcl_container_bom      TYPE REF TO cl_gui_container,
+       gcl_grid_bom           TYPE REF TO cl_gui_alv_grid,
+       gt_fcat_bom            TYPE lvc_t_fcat,
+       " Routing + Activity 단가 이용한 노무비
+       gcl_container_labor    TYPE REF TO cl_gui_container,
+       gcl_grid_labor         TYPE REF TO cl_gui_alv_grid,
+       gt_fcat_labor          TYPE lvc_t_fcat,
+       " 간접비
+       gcl_container_indirect TYPE REF TO cl_gui_container,
+       gcl_grid_indirect      TYPE REF TO cl_gui_alv_grid,
+       gt_fcat_indirect       TYPE lvc_t_fcat,
+       " 상단 표준원가 산정 상태 문서
+       gcl_container_doc      TYPE REF TO cl_gui_custom_container,
+       gcl_document           TYPE REF TO cl_dd_document,
+
+       gcl_handler            TYPE REF TO lcl_event_handler,
+       gs_fcat                TYPE lvc_s_fcat,
+       gs_layout              TYPE lvc_s_layo,
+       gs_stable              TYPE lvc_s_stbl,
+       gs_variant             TYPE disvariant,
+       gs_alv_toolbar         TYPE stb_button,
+       gs_row                 TYPE lvc_s_row.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

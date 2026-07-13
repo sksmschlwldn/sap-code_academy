@@ -1,0 +1,117 @@
+*&---------------------------------------------------------------------*
+*& Report ZLKW_SEL_SCREEN_VALUE
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zlkw_sel_screen_value MESSAGE-ID oo.
+
+TABLES : scarr.
+
+PARAMETERS : pa_carr TYPE scarr-carrid,
+             pa_name TYPE scarr-carrname.
+
+SELECT-OPTIONS : so_name FOR scarr-carrname.
+
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR pa_carr.
+  PERFORM f4_carrid.
+
+AT SELECTION-SCREEN OUTPUT.
+  PERFORM set_value.
+
+
+
+
+
+
+
+
+
+
+*&---------------------------------------------------------------------*
+*& Form f4_carrid
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f4_carrid .
+
+  DATA : BEGIN OF ls_scarr,
+           carrid   TYPE scarr-carrid,
+           carrname TYPE scarr-carrname,
+         END OF ls_scarr,
+
+         lt_scarr  LIKE TABLE OF ls_scarr,
+
+         lt_field  TYPE TABLE OF dfies,
+         ls_return TYPE ddshretval,
+         lt_return LIKE TABLE OF ls_return.
+
+  SELECT carrid carrname
+    INTO CORRESPONDING FIELDS OF TABLE lt_scarr
+    FROM scarr.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'CARRID'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'PA_CARR'
+      window_title = 'Airline List'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_scarr
+      return_tab   = lt_return.
+
+* 위 값을 셋팅후에 엔터를 쳐야만 화면에 나타나는데
+* 아래의 펑션을 콜해서 엔터를 친 효과를 줌
+* 즉 아래의 펑션은 PAI를 가게 해주는 펑션임
+  CALL FUNCTION 'SAPGUI_SET_FUNCTIONCODE'
+    EXPORTING
+      functioncode = 'ENTR'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_value
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_value .
+
+  CLEAR   : pa_name, so_name.
+  REFRESH : so_name.
+
+  SELECT SINGLE carrname
+    INTO @DATA(lv_carrname)
+    FROM scarr
+   WHERE carrid = @pa_carr.
+
+  IF sy-subrc NE 0.
+    EXIT.
+  ENDIF.
+
+  pa_name = lv_carrname.
+
+  so_name[] = VALUE #(
+                        sign   = 'I'
+                        option = 'EQ'
+                        low    = lv_carrname
+                        ( ) "끝에 빈괄호를 해주면  APPEND 효과가 있음
+                     ).
+
+ENDFORM.
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_CARR D       .
+* PA_NAME         Airline name
+* SO_NAME         Airline name
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

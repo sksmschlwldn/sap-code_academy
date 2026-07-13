@@ -1,0 +1,26 @@
+*&---------------------------------------------------------------------*
+*& Include ZLKW_TOP_DOCUMENT_TOP                    - Report ZLKW_TOP_DOCUMENT
+*&---------------------------------------------------------------------*
+REPORT zlkw_top_document MESSAGE-ID oo.
+
+TABLES : scarr.
+
+DATA : gt_data   TYPE TABLE OF scarr,
+       gv_okcode TYPE sy-ucomm,
+       gv_text   TYPE sdydo_text_element.
+
+* ALV 관련
+DATA : gcl_docking_container TYPE REF TO cl_gui_docking_container,
+       gcl_splitter          TYPE REF TO cl_gui_splitter_container,
+       gcl_container         TYPE REF TO cl_gui_custom_container,
+       gcl_grid              TYPE REF TO cl_gui_alv_grid,
+       gt_fcat               TYPE lvc_t_fcat,
+       gs_fcat               TYPE lvc_s_fcat,
+       gs_layout             TYPE lvc_s_layo,
+       gs_variant            TYPE disvariant,
+       gcl_alv_container     TYPE REF TO cl_gui_container,
+       gcl_top_container     TYPE REF TO cl_gui_container,
+       gcl_document_top      TYPE REF TO cl_dd_document.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

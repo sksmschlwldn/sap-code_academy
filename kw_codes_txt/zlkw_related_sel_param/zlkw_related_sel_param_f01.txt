@@ -1,0 +1,180 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_RELATED_SEL_PARAM_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form f4_connid
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f4_connid .
+
+  DATA : BEGIN OF ls_value,
+           carrid TYPE spfli-carrid,
+           connid TYPE spfli-connid,
+         END OF ls_value,
+
+         lt_value  LIKE TABLE OF ls_value,
+         lt_fields TYPE TABLE OF dynpread,
+         lv_carrid TYPE spfli-carrid.
+
+* 설거지 할것
+
+  lt_fields = VALUE #(
+                        fieldname = 'PA_CARR'  "스크린의 필드이름
+                        ( )
+                     ).
+
+* 화면에서 입력한 스크린의 필드값 읽어오기
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname               = sy-repid
+      dynumb               = sy-dynnr
+    TABLES
+      dynpfields           = lt_fields
+    EXCEPTIONS
+      invalid_abapworkarea = 1
+      invalid_dynprofield  = 2
+      invalid_dynproname   = 3
+      invalid_dynpronummer = 4
+      invalid_request      = 5
+      no_fielddescription  = 6
+      invalid_parameter    = 7
+      undefind_error       = 8
+      double_conversion    = 9
+      stepl_not_found      = 10
+      OTHERS               = 11.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Screen field read fail' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  READ TABLE lt_fields INTO DATA(ls_field) WITH KEY fieldname = 'PA_CARR'.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Screen field read fail' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  IF ls_field-fieldvalue IS INITIAL.
+    MESSAGE s000 WITH 'Pleae input Airline' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  lv_carrid = ls_field-fieldvalue.
+
+  SELECT carrid connid
+    INTO CORRESPONDING FIELDS OF TABLE lt_value
+    FROM spfli
+   WHERE carrid = lv_carrid.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Connection not found'.
+    EXIT.
+  ENDIF.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'CONNID'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'PA_CARR'
+      window_title = 'Airline Connection'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_value.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f4_connid_0100
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f4_connid_0100 .
+
+  DATA : BEGIN OF ls_value,
+           carrid TYPE spfli-carrid,
+           connid TYPE spfli-connid,
+         END OF ls_value,
+
+         lt_value  LIKE TABLE OF ls_value,
+         lt_fields TYPE TABLE OF dynpread,
+         lv_carrid TYPE spfli-carrid.
+
+* 설거지 할것
+
+  lt_fields = VALUE #(
+                        fieldname = 'GS_INPUT-CARRID'  "스크린의 필드이름
+                        ( )
+                     ).
+
+* 화면에서 입력한 스크린의 필드값 읽어오기
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname               = sy-repid
+      dynumb               = sy-dynnr
+    TABLES
+      dynpfields           = lt_fields
+    EXCEPTIONS
+      invalid_abapworkarea = 1
+      invalid_dynprofield  = 2
+      invalid_dynproname   = 3
+      invalid_dynpronummer = 4
+      invalid_request      = 5
+      no_fielddescription  = 6
+      invalid_parameter    = 7
+      undefind_error       = 8
+      double_conversion    = 9
+      stepl_not_found      = 10
+      OTHERS               = 11.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Screen field read fail' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  READ TABLE lt_fields INTO DATA(ls_field) WITH KEY fieldname = 'GS_INPUT-CARRID'.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Screen field read fail' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  IF ls_field-fieldvalue IS INITIAL.
+    MESSAGE s000 WITH 'Pleae input Airline' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  lv_carrid = ls_field-fieldvalue.
+
+  SELECT carrid connid
+    INTO CORRESPONDING FIELDS OF TABLE lt_value
+    FROM spfli
+   WHERE carrid = lv_carrid.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Connection not found'.
+    EXIT.
+  ENDIF.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'CONNID'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'GS_INPUT-CONNID'
+      window_title = 'Airline Connection'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_value.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

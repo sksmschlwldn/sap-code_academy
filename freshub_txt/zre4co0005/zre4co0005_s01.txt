@@ -1,0 +1,21 @@
+*&---------------------------------------------------------------------*
+*& Include          ZRE4CO0005_S01
+*&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK bl1 WITH FRAME TITLE TEXT-t01.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+
+    PARAMETERS : pa_dist RADIOBUTTON GROUP rg1 DEFAULT 'X'.
+    SELECTION-SCREEN COMMENT (8) FOR FIELD pa_dist.   " 1차 배부
+
+    SELECTION-SCREEN POSITION 30.
+
+    PARAMETERS : pa_asmt RADIOBUTTON GROUP rg1.
+    SELECTION-SCREEN COMMENT (10) FOR FIELD pa_asmt.  " 2차 배부
+
+  SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN END OF BLOCK bl1.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

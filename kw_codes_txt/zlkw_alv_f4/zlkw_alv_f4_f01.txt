@@ -1,0 +1,283 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_ALV_F4_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form get_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_data .
+
+  CLEAR   gs_data.
+  REFRESH gt_data.
+
+  SELECT carrid carrname currcode url
+    INTO CORRESPONDING FIELDS OF TABLE gt_data
+    FROM scarr
+   WHERE carrid IN so_carr.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Data not found'.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fcat .
+
+  gs_layout-zebra      = 'X'.
+  gs_layout-cwidth_opt = 'A'.
+  gs_layout-sel_mode   = 'D'.
+
+  gs_stable-row = 'X'.
+  gs_stable-col = 'X'.
+
+  PERFORM make_fcat USING :
+  'X'   'CARRID'    ' '   'SCARR' ' '   'X',
+  ' '   'CARRNAME'  ' '   'SCARR' ' '   ' ',
+  ' '   'CURRCODE'  ' '   'SCARR' ' '   ' ',
+  ' '   'URL'       ' '   'SCARR' ' '   ' '.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM make_fcat  USING pv_key pv_field pv_text pv_ref_table pv_ref_field pv_edit.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+  gs_fcat-edit      = pv_edit.
+
+  CASE pv_field.
+    WHEN 'CARRID'.
+      gs_fcat-f4availabl = 'X'.
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_screen .
+
+  CREATE OBJECT gcl_container
+    EXPORTING
+      side      = gcl_container->dock_at_left
+      extension = 5000.
+
+  CREATE OBJECT gcl_grid
+    EXPORTING
+      i_parent = gcl_container.
+
+  IF gcl_handler IS NOT BOUND.
+    CREATE OBJECT gcl_handler.
+  ENDIF.
+
+* ALV에 ONF4 이벤트 태울 필드 등록
+  PERFORM set_f4_grid.
+
+  SET HANDLER : gcl_handler->handle_f4 FOR gcl_grid.
+
+  CALL METHOD gcl_grid->register_edit_event
+    EXPORTING
+      i_event_id = gcl_grid->mc_evt_modified.
+
+  gs_variant-report = sy-repid.
+
+  CALL METHOD gcl_grid->set_table_for_first_display
+    EXPORTING
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+      is_variant      = gs_variant
+    CHANGING
+      it_fieldcatalog = gt_fcat
+      it_outtab       = gt_data.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_f4
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_FIELDNAME
+*&      --> E_FIELDVALUE
+*&      --> ES_ROW_NO
+*&      --> ER_EVENT_DATA
+*&      --> ET_BAD_CELLS
+*&      --> E_DISPLAY
+*&---------------------------------------------------------------------*
+FORM handle_f4  USING pv_fieldname   TYPE        lvc_fname
+                      pv_fieldvalue  TYPE        lvc_value
+                      ps_row_no      TYPE        lvc_s_roid
+                      po_event_data  TYPE REF TO cl_alv_event_data
+                      pt_bad_cells   TYPE        lvc_t_modi
+                      pv_display.
+
+  po_event_data->m_event_handled = 'X'.
+
+  DATA: lv_dynprog          TYPE sy-repid,
+        lv_dynnr            TYPE sy-dynnr,
+        lv_window_title(30),
+        lv_fieldvalue       TYPE dynfieldvalue,
+        lv_field            TYPE help_info-dynprofld,
+        ls_return           TYPE ddshretval,
+        lt_return           LIKE TABLE OF ls_return.
+
+  DATA : BEGIN OF ls_value,
+           carrid    TYPE spfli-carrid,
+           connid    TYPE spfli-connid,
+           countryfr TYPE spfli-countryfr,
+           countryto TYPE spfli-countryto,
+           airpfrom  TYPE spfli-airpfrom,
+           airpto    TYPE spfli-airpto,
+           fltime    TYPE spfli-fltime,
+           fltype    TYPE spfli-fltype,
+           cityfrom  TYPE spfli-cityfrom,
+           cityto    TYPE spfli-cityto,
+         END OF ls_value,
+
+         lt_value LIKE TABLE OF ls_value,
+         ls_modi  TYPE lvc_s_modi.
+
+  FIELD-SYMBOLS: <lt_itab> TYPE lvc_t_modi.
+
+  CLEAR   : lv_dynprog, lv_dynnr, lv_window_title.
+  REFRESH : lt_value, lt_return.
+
+  READ TABLE gt_data INTO gs_data INDEX ps_row_no-row_id.
+
+  IF sy-subrc NE 0.
+    EXIT.
+  ENDIF.
+
+  SELECT carrid connid countryfr countryto airpfrom airpto
+         fltime fltype cityfrom cityto
+    INTO CORRESPONDING FIELDS OF TABLE lt_value
+    FROM spfli
+   WHERE carrid = gs_data-carrid.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Schedule not found' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  lv_dynprog      = sy-repid.
+  lv_dynnr        = sy-dynnr.
+  lv_field        = pv_fieldname.
+  lv_window_title = 'Schedule'.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'CARRID'
+      dynpprog        = lv_dynprog       "*Current program
+      dynpnr          = lv_dynnr         "*Screen number
+      dynprofield     = lv_field
+      window_title    = lv_window_title  "*Title for the hit list
+      value_org       = 'S'
+      display         = pv_display       "만일 Display만 할 경우 pv_display에 'X'를 넣는다
+    TABLES
+      value_tab       = lt_value
+      return_tab      = lt_return
+    EXCEPTIONS
+      parameter_error = 1
+      no_values_found = 2
+      OTHERS          = 3.
+
+  IF sy-subrc NE 0.
+    EXIT.
+  ENDIF.
+
+* 이 아래의 로직은 서치헬프창에서 선택한 필드값을 itab에 세팅하는 로직임
+* 단순히 Display만 할 경우엔 아래 로직 필요 없음
+
+  ASSIGN po_event_data->m_data->* TO <lt_itab>.
+
+  READ TABLE lt_return INTO ls_return INDEX 1.
+
+  IF sy-subrc = 0.
+
+    ls_modi-row_id    = ps_row_no-row_id.
+    ls_modi-fieldname = pv_fieldname.
+    ls_modi-value     = ls_return-fieldval.
+
+    APPEND ls_modi TO <lt_itab>.
+    CLEAR  ls_modi.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid .
+
+  CALL METHOD gcl_grid->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_f4_grid
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_f4_grid .
+
+  DATA : ls_f4 TYPE lvc_s_f4,
+         lt_f4 TYPE lvc_t_f4.
+
+* ONF4 이벤트 태울 필드가 여러개 일 수 있어서 인터널 테이블 형식으로
+* 필드를 추가하게 되어 있는것
+  ls_f4-fieldname  = 'CARRID'.
+  ls_f4-register   = 'X'.
+  ls_f4-getbefore  = 'X'.
+  ls_f4-chngeafter = 'X'.
+
+  APPEND ls_f4 TO lt_f4.
+  CLEAR  ls_f4.
+
+  CALL METHOD gcl_grid->register_f4_for_fields
+    EXPORTING
+      it_f4 = lt_f4.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

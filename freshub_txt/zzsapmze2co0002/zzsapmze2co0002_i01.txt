@@ -1,0 +1,76 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZE2CO0002_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'SEARCH'.
+      CLEAR gv_okcode.
+
+      PERFORM refresh.
+*      PERFORM get_materials.
+*      PERFORM refresh_grid_mat.
+*      REFRESH : gt_bom_cost, gt_labor_cost, gt_indirect_cost.
+*      PERFORM refresh_grid_bom.
+*      PERFORM refresh_grid_labor.
+*      PERFORM refresh_grid_indirect.
+*      CLEAR   gs_cost_detail.
+*      PERFORM refresh_doc.
+
+   WHEN 'REFRESH'.
+     CLEAR gv_okcode.
+
+      PERFORM set_init.
+      PERFORM refresh.
+*      PERFORM get_materials.
+*      PERFORM refresh_grid_mat.
+*      REFRESH : gt_bom_cost, gt_labor_cost, gt_indirect_cost.
+*      PERFORM refresh_grid_bom.
+*      PERFORM refresh_grid_labor.
+*      PERFORM refresh_grid_indirect.
+*      CLEAR   gs_cost_detail.
+*      PERFORM refresh_doc.
+
+    WHEN 'ENT'.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0100 INPUT.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  CHANGE_YEAR  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE change_year INPUT.
+
+  PERFORM expand_tree.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  CHANGE_POPER  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE change_poper INPUT.
+
+  PERFORM expand_tree.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

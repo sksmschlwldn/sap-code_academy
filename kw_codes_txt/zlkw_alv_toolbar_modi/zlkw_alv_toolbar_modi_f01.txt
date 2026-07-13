@@ -1,0 +1,309 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_ALV_TOOLBAR_MODI_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form get_airline
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_airline .
+
+  CLEAR   gs_scarr.
+  REFRESH gt_scarr.
+
+  SELECT carrid carrname currcode url
+    INTO CORRESPONDING FIELDS OF TABLE gt_scarr
+    FROM scarr
+   WHERE carrid IN so_carr.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Data not found'.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fcat_layout .
+
+  gs_layout-zebra      = 'X'.
+  gs_layout-cwidth_opt = 'X'.
+  gs_layout-sel_mode   = 'D'.
+  gs_layout-ctab_fname = 'COLOR'.
+
+  PERFORM set_fcat USING :
+  'X'   'CARRID'    ' '   'SCARR'   'CARRID',
+  ' '   'CARRNAME'  ' '   'SCARR'   'CARRNAME',
+  ' '   'CURRCODE'  ' '   'SCARR'   'CURRCODE',
+  ' '   'URL'       ' '   'SCARR'   'URL'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat USING pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_object .
+
+  CREATE OBJECT gcl_container
+    EXPORTING
+      side      = gcl_container->dock_at_left
+      extension = 5000.
+
+  CREATE OBJECT gcl_grid
+    EXPORTING
+      i_parent = gcl_container.
+
+  IF gcl_handler IS NOT BOUND.
+    CREATE OBJECT gcl_handler.
+  ENDIF.
+
+  SET HANDLER : gcl_handler->handle_toolbar      FOR gcl_grid,
+                gcl_handler->handle_user_command FOR gcl_grid.
+
+  gs_variant-report = sy-repid.
+
+  CALL METHOD gcl_grid->set_table_for_first_display
+    EXPORTING
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+      is_variant      = gs_variant
+    CHANGING
+      it_outtab       = gt_scarr
+      it_fieldcatalog = gt_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_toolbar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_OBJECT
+*&---------------------------------------------------------------------*
+FORM handle_toolbar USING pcl_object TYPE REF TO cl_alv_event_toolbar_set.
+
+  DATA : ls_toolbar TYPE stb_button.
+
+  LOOP AT pcl_object->mt_toolbar INTO ls_toolbar.
+
+    CASE ls_toolbar-function.
+      WHEN 'APPEND' OR 'INSERT' OR 'DELETE'.
+        DELETE pcl_object->mt_toolbar INDEX sy-tabix.
+    ENDCASE.
+
+  ENDLOOP.
+
+  IF gv_check IS INITIAL.
+
+    gs_alv_toolbar-butn_type = 0.
+    gs_alv_toolbar-function  = 'APPEND'.
+    gs_alv_toolbar-icon      = icon_create.
+    gs_alv_toolbar-text      = 'Append'.
+    gs_alv_toolbar-quickinfo = 'Create row'.
+
+    APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+    CLEAR  gs_alv_toolbar.
+
+    gs_alv_toolbar-butn_type = 3.
+    gs_alv_toolbar-icon      = icon_dummy.
+
+    APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+    CLEAR  gs_alv_toolbar.
+
+    gs_alv_toolbar-butn_type = 0.
+    gs_alv_toolbar-function  = 'INSERT'.
+    gs_alv_toolbar-icon      = icon_insert_row.
+    gs_alv_toolbar-text      = 'Insert'.
+    gs_alv_toolbar-quickinfo = 'Insert row'.
+
+    APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+    CLEAR  gs_alv_toolbar.
+
+    gs_alv_toolbar-butn_type = 3.
+    gs_alv_toolbar-icon      = icon_dummy.
+
+    APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+    CLEAR  gs_alv_toolbar.
+
+    gs_alv_toolbar-butn_type = 0.
+    gs_alv_toolbar-function  = 'DELETE'.
+    gs_alv_toolbar-icon      = icon_delete_row.
+    gs_alv_toolbar-text      = 'Delete'.
+    gs_alv_toolbar-quickinfo = 'Delete row'.
+
+    APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+    CLEAR  gs_alv_toolbar.
+
+  ELSE.
+
+    gs_alv_toolbar-butn_type = 0.
+    gs_alv_toolbar-function  = 'DELETE'.
+    gs_alv_toolbar-icon      = icon_delete_row.
+    gs_alv_toolbar-text      = 'Delete'.
+    gs_alv_toolbar-quickinfo = 'Delete row'.
+
+    APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+    CLEAR  gs_alv_toolbar.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_user_command
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_UCOMM
+*&---------------------------------------------------------------------*
+FORM handle_user_command USING pv_ucomm TYPE sy-ucomm.
+
+  CASE pv_ucomm.
+    WHEN 'APPEND'.
+      MESSAGE i000 WITH 'Append Row Click'.
+
+    WHEN 'INSERT'.
+      MESSAGE i000 WITH 'Insert Row Click'.
+
+    WHEN 'DELETE'.
+      MESSAGE i000 WITH 'Delete Row Click'.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_color
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_color .
+
+  DATA : ls_color TYPE lvc_s_scol,
+         lv_tabix TYPE sy-tabix.
+
+  LOOP AT gt_scarr INTO gs_scarr.
+
+    lv_tabix = sy-tabix.
+
+    CLEAR ls_color.
+    CASE gs_scarr-currcode.
+      WHEN 'USD'.
+        REFRESH gs_scarr-color.
+
+        ls_color-fname     = 'CURRCODE'.
+        ls_color-color-col = 5.
+        ls_color-color-int = 0.
+        ls_color-color-inv = 0.
+
+        APPEND ls_color TO gs_scarr-color.
+
+        ls_color-fname     = 'URL'.
+        ls_color-color-col = 3.
+        ls_color-color-int = 0.
+        ls_color-color-inv = 0.
+
+        APPEND ls_color TO gs_scarr-color.
+
+        MODIFY gt_scarr FROM gs_scarr INDEX lv_tabix
+        TRANSPORTING color.
+
+      WHEN 'JPY'.
+        REFRESH gs_scarr-color.
+
+        ls_color-color-col = 6.
+        ls_color-color-int = 1.
+        ls_color-color-inv = 1.
+
+        APPEND ls_color TO gs_scarr-color.
+
+        MODIFY gt_scarr FROM gs_scarr INDEX lv_tabix
+        TRANSPORTING color.
+
+    ENDCASE.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form change_alv_toolbar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM change_alv_toolbar .
+
+  CASE 'X'.
+    WHEN gv_check.
+      CLEAR gv_check.
+    WHEN OTHERS.
+      gv_check = 'X'.
+  ENDCASE.
+
+* 아래의 메소드를 써도 되지만 Refresh 하면  toolbar event 도 자동으로 탄다
+*  CALL METHOD gcl_grid->set_toolbar_interactive.
+
+  PERFORM refresh_grid.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid .
+
+  gs_stable-row = 'X'.
+  gs_stable-col = 'X'.
+
+  CALL METHOD gcl_grid->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

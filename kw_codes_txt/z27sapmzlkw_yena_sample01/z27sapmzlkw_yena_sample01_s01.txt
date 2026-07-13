@@ -1,0 +1,10 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZLKW_YENA_SAMPLE01_S01
+*&---------------------------------------------------------------------*
+
+SELECTION-SCREEN BEGIN OF SCREEN 9000 AS SUBSCREEN.
+  SELECT-OPTIONS : so_carr FOR sflight-carrid.
+SELECTION-SCREEN END OF SCREEN 9000.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

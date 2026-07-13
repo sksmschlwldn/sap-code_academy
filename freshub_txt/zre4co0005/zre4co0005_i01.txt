@@ -1,0 +1,200 @@
+*&---------------------------------------------------------------------*
+*& Include          ZRE4CO0005_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'LIST'.
+      CLEAR gv_okcode.
+      CALL SCREEN '0300' STARTING AT 20 3.
+
+    WHEN 'SEGMENT'.
+      CLEAR gv_okcode.
+      PERFORM get_segment_data.
+      PERFORM refresh_segment.
+
+    WHEN 'SETTING'.
+      CLEAR gv_okcode.
+      CALL SCREEN '0400' STARTING AT 20 3.
+
+    WHEN 'EXECUTE'.
+      CLEAR gv_okcode.
+      PERFORM get_selected_cycle.
+*      PERFORM check_background_job.
+      PERFORM calculate_allocation_data.
+      PERFORM handle_execution_mode.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0100 INPUT.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'LIST'.
+      CLEAR gv_okcode.
+      CALL SCREEN '0300' STARTING AT 20 3.
+
+    WHEN 'SEGMENT'.
+      CLEAR gv_okcode.
+      PERFORM get_segment_data.
+      PERFORM refresh_segment.
+
+    WHEN 'SETTING'.
+      CLEAR gv_okcode.
+      CALL SCREEN '0400' STARTING AT 20 3.
+
+    WHEN 'EXECUTE'.
+      CLEAR gv_okcode.
+      PERFORM get_selected_cycle.
+*      PERFORM check_background_job.
+      PERFORM calculate_allocation_data.
+      PERFORM handle_execution_mode.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0200 INPUT.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0300 INPUT.
+
+  CALL METHOD : go_cont_detail_info->free( ).
+  FREE        : go_document,          go_cont_detail_info.
+  CLEAR       : gv_detail_list, gv_detail_sen_rec, gv_detail_journal.
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0300 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'OKAY'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0400  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0400 INPUT.
+
+  CLEAR : gv_save_extract, gv_exit_program, gv_simulation_mode,
+          gv_must_test.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0400  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0400 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'OKAY'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0500  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0500 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'SEND_RECV' OR 'JOURNAL'.
+
+      gv_pressedtab = gv_okcode.                   " 변경된 데이터 조회
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0500  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0500 INPUT.
+
+  REFRESH : gt_send_recv, gt_journal, gt_fcat_send_recv, gt_fcat_journal, gt_sort_send_recv, gt_sort_journal.
+
+  CALL METHOD : go_alv_send_recv->free( ),  go_alv_journal->free( ), go_cont_list->free( ),
+                go_cont_send_recv->free( ), go_cont_journal->free( ).
+
+  FREE        : go_alv_send_recv,           go_alv_journal,          go_cont_list,
+                go_cont_send_recv,          go_cont_journal.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0600  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0600 INPUT.
+
+  CALL METHOD : go_cont_list->free( ).
+  FREE        : go_cont_list.
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0600  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0600 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'OKAY'.
+      CALL METHOD : go_cont_list->free( ).
+      FREE        : go_cont_list.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

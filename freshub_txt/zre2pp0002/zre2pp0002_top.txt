@@ -1,0 +1,101 @@
+*&---------------------------------------------------------------------*
+*& Include ZRE2PP0002_TOP                           - Report ZRE2PP0002
+*&---------------------------------------------------------------------*
+REPORT zre2pp0002 MESSAGE-ID zpe2m.
+
+CLASS lcl_event_handler DEFINITION DEFERRED.
+
+TABLES : zte2pp0002.
+
+DATA :  BEGIN OF gs_bom_h,
+          stlnr       TYPE zte2pp0002-stlnr,
+          matnr       TYPE zte2pp0002-matnr,
+          maktx       TYPE zte2mm0001-maktx,
+          werks       TYPE zte2pp0002-werks,
+          bmeng       TYPE zte2pp0002-bmeng,
+          meins       TYPE zte2pp0002-meins,
+          status      TYPE zte2pp0002-status,
+          stat_txt(5),
+          style       TYPE lvc_t_styl,
+          mark.
+          INCLUDE STRUCTURE zse2timestamp.
+DATA:    END OF gs_bom_h,
+
+gt_bom_h LIKE TABLE OF gs_bom_h,
+
+  BEGIN OF gs_bom_i,
+    stlnr TYPE zte2pp0003-stlnr,
+    posnr TYPE zte2pp0003-posnr,
+    idnrk TYPE zte2pp0003-idnrk,
+    maktx TYPE zte2mm0001-maktx,
+    menge TYPE zte2pp0003-menge,
+    meins TYPE zte2pp0003-meins,
+    style TYPE lvc_t_styl,
+    mark.
+    INCLUDE STRUCTURE zse2timestamp.
+DATA:    END OF gs_bom_i,
+
+gt_bom_i        LIKE TABLE OF gs_bom_i,
+
+  gt_bom_i_del    LIKE TABLE OF zte2pp0003,
+  gt_bom_h_del    LIKE TABLE OF zte2pp0002,
+
+  gv_sel_bom      TYPE zte2pp0003-stlnr, " 선택된 BOM HEADER
+  gv_del_bom      TYPE zte2pp0003-stlnr, " 삭제될 BOM
+
+  gv_okcode       TYPE sy-ucomm,
+
+  gv_toggle_state TYPE i,
+  gv_mode,
+  gv_state        TYPE i,
+
+  BEGIN OF gs_bom_new_h,
+    stlnr  TYPE zte2pp0002-stlnr,
+    werks  TYPE zte2pp0002-werks,
+    matnr  TYPE zte2pp0002-matnr,
+    maktx  TYPE zte2mm0001-maktx,
+    bmeng  TYPE zte2pp0002-bmeng,
+    meins  TYPE zte2pp0002-meins,
+    status TYPE zte2pp0002-status,
+  END OF gs_bom_new_h.
+
+*  BEGIN OF gs_bom_new_i,
+*    stlnr TYPE zte2pp0003-stlnr,
+*    posnr TYPE zte2pp0003-posnr,
+*    idnrk TYPE zte2pp0003-idnrk,
+*    maktx TYPE zte2mm0001-maktx,
+*    menge TYPE zte2pp0003-menge,
+*    meins TYPE zte2pp0003-meins,
+*    mark,
+*  END OF gs_bom_new_i,
+
+*  gt_bom_new_i LIKE TABLE OF gs_bom_new_i.
+
+DATA :
+  gcl_container_h     TYPE REF TO cl_gui_custom_container,
+  gcl_container_i     TYPE REF TO cl_gui_custom_container,
+  gcl_grid_h          TYPE REF TO cl_gui_alv_grid,
+  gcl_grid_i          TYPE REF TO cl_gui_alv_grid,
+  gcl_handler         TYPE REF TO lcl_event_handler,
+  gs_fcat             TYPE lvc_s_fcat,
+  gt_fcat_h           TYPE lvc_t_fcat,
+  gt_fcat_i           TYPE lvc_t_fcat,
+  gs_layout           TYPE lvc_s_layo,
+  gs_variant          TYPE disvariant,
+  gs_stable           TYPE lvc_s_stbl,
+  gs_row              TYPE lvc_s_row,
+  gt_row              TYPE lvc_t_row,
+  gt_exclude          TYPE ui_functions,
+  gs_alv_toolbar      TYPE stb_button,
+
+  gcl_container_doc_m TYPE REF TO cl_gui_custom_container,
+  gcl_container_doc_c TYPE REF TO cl_gui_custom_container,
+  gcl_document_m      TYPE REF TO cl_dd_document,
+  gcl_document_c      TYPE REF TO cl_dd_document.
+
+*  gcl_container_new_i TYPE REF TO cl_gui_custom_container,
+*  gcl_grid_new_i      TYPE REF TO cl_gui_alv_grid,
+*  gt_fcat_new_i       TYPE lvc_t_fcat.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

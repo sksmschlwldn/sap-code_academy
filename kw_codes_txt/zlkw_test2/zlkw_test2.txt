@@ -1,0 +1,44 @@
+*&---------------------------------------------------------------------*
+*& Report ZLKW_TEST2
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE zlkw_test2_top                          .    " Global Data
+
+PARAMETERS : pa_name(5).
+
+INCLUDE zlkw_test2_o01                          .  " PBO-Modules
+INCLUDE zlkw_test2_i01                          .  " PAI-Modules
+INCLUDE zlkw_test2_f01                          .  " FORM-Routines
+
+
+START-OF-SELECTION.
+
+  PERFORM get_cds.
+*  CALL SCREEN '0100'.
+
+*  IF sy-batch IS NOT INITIAL.
+*
+*    PERFORM make_data_by_batch.
+*
+*  ENDIF.
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> Test
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_NAME         Test
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

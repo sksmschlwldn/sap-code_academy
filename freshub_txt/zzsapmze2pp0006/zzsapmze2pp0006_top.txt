@@ -1,0 +1,117 @@
+*&---------------------------------------------------------------------*
+*& Include SAPMZE2PP0006_TOP                        - Module Pool      SAPMZE2PP0006
+*&---------------------------------------------------------------------*
+PROGRAM zzsapmze2pp0006 MESSAGE-ID zpe2m.
+
+CLASS lcl_event_handler DEFINITION DEFERRED.
+
+DATA : BEGIN OF gs_plan,
+         status_icon  TYPE icon_d,      " 상태 아이콘
+         plnum        TYPE zte2pp0006-plnum,  " 생산계획 번호
+         posnr        TYPE zte2pp0007-posnr, " 항목번호
+         pdatu        TYPE zte2pp0007-pdatu, " 생산 예정일
+         matnr        TYPE zte2pp0007-matnr,
+         maktx        TYPE zte2mm0001-maktx,
+         plnmg        TYPE zte2pp0007-plnmg, " 계획 수량
+         meins        TYPE zte2pp0007-meins, " 계획 수량
+         versp        TYPE zte2pp0007-versp, " 계획 활성 여부
+         stat_txt(10),
+         pernr        TYPE zte2pp0006-pernr, " 이름
+         sname        TYPE zte2hr0002-sname, " 이름
+       END OF gs_plan,
+
+       gt_plan LIKE TABLE OF gs_plan,
+
+       BEGIN OF gs_search,
+         spmon     TYPE zte2pp0006-spmon, " 계획연월
+         sel_uncon TYPE xfeld,
+       END OF gs_search,
+
+       BEGIN OF gs_info,
+         stlnr TYPE zte2pp0003-stlnr, " BOM ID
+         plnnr TYPE zte2pp0005-plnnr, " Routing ID
+         ktext TYPE zte2pp0004-ktext, " 공정명
+         werks TYPE zte2pp0001-werks, " 플랜트
+         runyn TYPE zte2pp0004-runyn, " 공정 가동 여부
+       END OF gs_info,
+
+       BEGIN OF gs_info_rou,
+         plnnr TYPE zte2pp0005-plnnr, " Routing ID
+         ktext TYPE zte2pp0004-ktext, " 공정명
+         werks TYPE zte2pp0001-werks, " 플랜트
+         runyn TYPE zte2pp0004-runyn, " 공정 가동 여부
+         bmsch TYPE zte2pp0005-bmsch, " 기준수량
+         meins TYPE zte2pp0005-meins,
+         text(2),
+       END OF gs_info_rou,
+
+       BEGIN OF gs_info_bom,
+         stlnr TYPE zte2pp0003-stlnr, " BOM ID
+         bmeng TYPE zte2pp0002-bmeng, " 기준수량
+         meins TYPE zte2pp0002-meins,
+       END OF gs_info_bom,
+
+       gv_okcode TYPE sy-ucomm,
+
+       BEGIN OF gs_rou,
+         vornr TYPE zte2pp0005-vornr,
+         arbpl TYPE zte2pp0005-arbpl, " 작업장 ID
+         ktext TYPE zte2pp0001-ktext, " 작업장 명
+         ltxa1 TYPE zte2pp0005-ltxa1,
+       END OF gs_rou,
+
+       gt_rou LIKE TABLE OF gs_rou,
+
+       BEGIN OF gs_bom,
+         idnrk TYPE zte2pp0003-idnrk,
+         maktx TYPE zte2mm0001-maktx,
+         menge TYPE zte2pp0003-menge,
+         meins TYPE zte2pp0003-meins,
+       END OF gs_bom,
+
+       gt_bom LIKE TABLE OF gs_bom,
+
+       BEGIN OF gs_doc,
+         converted TYPE  sdydo_text_element,
+         pending   TYPE  sdydo_text_element,
+       END OF gs_doc,
+
+       gv_ok.
+
+
+DATA : gcl_container_plan TYPE REF TO cl_gui_custom_container,
+       gcl_container      TYPE REF TO cl_gui_custom_container,
+       gcl_splitter       TYPE REF TO cl_gui_splitter_container,
+       gcl_container_l    TYPE REF TO cl_gui_container,
+       gcl_container_r    TYPE REF TO cl_gui_container,
+       gcl_grid_plan      TYPE REF TO cl_gui_alv_grid,
+       gcl_grid_l         TYPE REF TO cl_gui_alv_grid,
+       gcl_grid_r         TYPE REF TO cl_gui_alv_grid,
+       gcl_handler        TYPE REF TO lcl_event_handler,
+       gs_fcat            TYPE lvc_s_fcat,
+       gt_fcat_plan       TYPE lvc_t_fcat,
+       gt_fcat_l          TYPE lvc_t_fcat,
+       gt_fcat_r          TYPE lvc_t_fcat,
+       gs_layout          TYPE lvc_s_layo,
+       gs_variant         TYPE disvariant,
+       gs_stable          TYPE lvc_s_stbl,
+*       gs_row          TYPE lvc_s_row,
+*       gt_row          TYPE lvc_t_row,
+*       gt_exclude      TYPE ui_functions,
+       gs_alv_toolbar     TYPE stb_button,
+       gcl_container_doc  TYPE REF TO cl_gui_custom_container,
+       gcl_container_lf   TYPE REF TO cl_gui_container,
+       gcl_container_rg   TYPE REF TO cl_gui_container,
+       gcl_document_lf    TYPE REF TO cl_dd_document,
+       gcl_document_rg    TYPE REF TO cl_dd_document,
+
+       gcl_container_rou  TYPE REF TO cl_gui_custom_container,
+       gcl_grid_rou       TYPE REF TO cl_gui_alv_grid,
+       gt_fcat_rou        TYPE lvc_t_fcat,
+
+       gcl_container_bom  TYPE REF TO cl_gui_custom_container,
+       gcl_grid_bom       TYPE REF TO cl_gui_alv_grid,
+       gt_fcat_bom        TYPE lvc_t_fcat.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

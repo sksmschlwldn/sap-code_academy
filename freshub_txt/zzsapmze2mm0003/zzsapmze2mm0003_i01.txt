@@ -1,0 +1,168 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZE2MM0003_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0100 INPUT.
+
+  IF gcl_grid_mat IS NOT INITIAL.
+
+    CALL METHOD : gcl_grid_mat->free, gcl_container_mat->free.
+    FREE : gcl_grid_mat, gcl_container_mat.
+
+  ENDIF.
+
+  CALL METHOD : gcl_tree->free, gcl_container_tree->free.
+
+  FREE : gcl_tree, gcl_container_tree.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'SEARCH'.
+      CLEAR gv_okcode.
+      PERFORM refresh_screen.
+
+      DATA : lv_flag.
+
+      IF gs_search IS NOT INITIAL.
+        PERFORM validate_search_data CHANGING lv_flag .
+        CHECK lv_flag IS INITIAL. " 에러있으면 트리펼치기 x
+        PERFORM expand_tree. " 검색시 해당 검색조건에 맞는 트리의 노드를 펼쳐줌
+        PERFORM set_info.
+      ENDIF.
+
+    WHEN 'REFRESH'.
+      CLEAR gv_okcode.
+      CLEAR   gs_search.
+      PERFORM refresh_screen.
+
+    WHEN 'CREATE'.
+      CLEAR gv_okcode.
+      CLEAR gs_info.
+
+      PERFORM create_new_material.
+
+    WHEN 'EDIT'.
+      CLEAR gv_okcode.
+      gv_mode = 'E'.
+
+    WHEN 'SAVE'.
+      CLEAR gv_okcode.
+      DATA lv_flag3.
+
+      PERFORM valid_fields CHANGING lv_flag3.
+      CHECK lv_flag3 IS INITIAL.
+      PERFORM update_material.
+*       gv_mode = 'D'.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  GET_F4_MATNR  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE get_f4_matnr INPUT.
+
+  PERFORM get_f4_matnr USING 'GS_SEARCH-MTART'
+                             'GS_SEARCH-MATKL'.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  GET_MAKTX  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE get_maktx INPUT.
+
+  PERFORM get_maktx.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0101  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0101 INPUT.
+
+  " 자재 생성을 ㄹㅇ안할것이냐?
+  CLEAR gs_info.
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0101  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0101 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'CREATE_MAT'.
+      DATA lv_flag2.
+      CLEAR gv_okcode.
+
+      PERFORM valid_fields CHANGING lv_flag2.
+
+      CHECK lv_flag2 IS INITIAL. " 에러있으면 생성 X
+      PERFORM create_material.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  GET_F4_MATKL_SEARCH  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE get_f4_matkl_search INPUT.
+
+  PERFORM get_f4_matkl USING 'GS_SEARCH-MTART'
+                             'GS_SEARCH-MATKL'.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  GET_F4_MATKL_INFO  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE get_f4_matkl_info INPUT.
+
+  PERFORM get_f4_matkl USING 'GS_INFO-MTART'
+                             'GS_INFO-MATKL'.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_MAKTX  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_maktx INPUT.
+
+  IF gs_search-matnr IS INITIAL.
+    CLEAR gs_search-maktx.
+    RETURN.
+  ENDIF.
+
+  SELECT SINGLE maktx
+    INTO gs_search-maktx
+    FROM zte2mm0001
+   WHERE matnr = gs_search-matnr.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

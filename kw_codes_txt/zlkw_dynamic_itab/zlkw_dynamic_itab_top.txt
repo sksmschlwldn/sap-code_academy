@@ -1,0 +1,41 @@
+*&---------------------------------------------------------------------*
+*& Include ZLKW_DYNAMIC_ITAB_TOP                    - Report ZLKW_DYNAMIC_ITAB
+*&---------------------------------------------------------------------*
+REPORT zlkw_dynamic_itab MESSAGE-ID oo.
+
+DATA : BEGIN OF gs_field,
+         field TYPE dd03l-fieldname,
+         leng  TYPE dd03l-leng,
+       END OF gs_field,
+
+       BEGIN OF gs_field_label,
+         fieldname TYPE dd03m-fieldname,
+         reptext   TYPE dd03m-reptext,
+         scrtext_s TYPE dd03m-scrtext_s,
+         scrtext_m TYPE dd03m-scrtext_m,
+         scrtext_l TYPE dd03m-scrtext_l,
+       END OF gs_field_label,
+
+       gt_field       LIKE TABLE OF gs_field,
+       gt_field_label LIKE TABLE OF gs_field_label,
+       go_new_table   TYPE REF TO data,
+       go_new_line    TYPE REF TO data,
+       gs_field_fcat  TYPE lvc_s_fcat,
+       gt_field_fcat  TYPE lvc_t_fcat.
+
+* ALV 관련
+DATA : gcl_container TYPE REF TO cl_gui_docking_container,
+       gcl_grid      TYPE REF TO cl_gui_alv_grid,
+       gs_fcat       TYPE lvc_s_fcat,
+       gt_fcat       TYPE lvc_t_fcat.
+
+FIELD-SYMBOLS : <gt_table> TYPE STANDARD TABLE,
+                <gs_line>  TYPE any.
+
+DEFINE _clear.
+  CLEAR   &1.
+  REFRESH &1.
+END-OF-DEFINITION.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

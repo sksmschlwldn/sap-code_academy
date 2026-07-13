@@ -1,0 +1,66 @@
+*&---------------------------------------------------------------------*
+*& Include          ZRE20005_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0100 INPUT.
+
+  CALL METHOD : gcl_grid_plan->free, gcl_container_plan->free.
+
+  FREE : gcl_grid_plan, gcl_container_plan.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'REFRESH'.
+      CLEAR gv_okcode.
+      gt_plan = gt_plan_org.
+      PERFORM set_style.
+      PERFORM refresh_grid.
+      PERFORM clear_input.
+
+    WHEN 'ERASE'.
+      CLEAR   gv_okcode.
+      PERFORM clear_input.
+
+    WHEN 'SEARCH'.
+      CLEAR   gv_okcode.
+      PERFORM search_sales.
+
+    WHEN 'CREATE'.
+      CLEAR   gv_okcode.
+      PERFORM create_plan.
+
+    WHEN 'GO_PAI'.
+      gs_search-plnnr = gs_plan-pbdnr.
+      gs_search-gjahr = gs_plan-spmon(4).
+      DATA(lv_mm)     = gs_plan-spmon+4(2).
+      UNPACK lv_mm TO gs_search-poper.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  F4_PERNR  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE f4_pernr INPUT.
+
+  PERFORM f4_pernr.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

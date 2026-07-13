@@ -1,0 +1,7 @@
+*&---------------------------------------------------------------------*
+*& Include ZLKW_SEL_SCREEN_TEXT_TOP                 - Report ZLKW_SEL_SCREEN_TEXT
+*&---------------------------------------------------------------------*
+REPORT zlkw_sel_screen_text MESSAGE-ID oo.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

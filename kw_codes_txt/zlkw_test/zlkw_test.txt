@@ -1,0 +1,263 @@
+*&---------------------------------------------------------------------*
+*& Report ZLKW_TEST
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zlkw_test MESSAGE-ID oo.
+
+PARAMETERS : pa_rb1 RADIOBUTTON GROUP rb1 DEFAULT 'X',
+             pa_rb2 RADIOBUTTON GROUP rb1.
+
+DATA : gs_sflight TYPE sflight,
+       gt_sflight LIKE TABLE OF gs_sflight,
+       gs_spfli   TYPE spfli,
+       gt_spfli   LIKE TABLE OF gs_spfli.
+
+SELECT *
+  INTO CORRESPONDING FIELDS OF TABLE gt_sflight
+  FROM sflight.
+
+SELECT *
+  INTO CORRESPONDING FIELDS OF TABLE gt_spfli
+  FROM spfli.
+
+
+*PERFORM field_symbol_01.
+*PERFORM field_symbol_02.
+*PERFORM field_symbol_03.
+*PERFORM field_symbol_04.
+PERFORM field_symbol_05.
+
+
+*&---------------------------------------------------------------------*
+*& Form field_symbol_01
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM field_symbol_01 .
+
+  DATA : lv_itab(20).
+
+  FIELD-SYMBOLS : <lft_itab> TYPE ANY TABLE.
+
+  UNASSIGN <lft_itab>.
+
+  CASE 'X'.
+    WHEN pa_rb1.
+      lv_itab = 'GT_SPFLI'.
+
+    WHEN pa_rb2.
+      lv_itab = 'GT_SFLIGHT'.
+
+  ENDCASE.
+
+  ASSIGN (lv_itab) TO <lft_itab>.
+
+*  CASE 'X'.
+*    WHEN pa_rb1.
+*      ASSIGN gt_spfli TO <lft_itab>.
+*
+*    WHEN pa_rb2.
+*      ASSIGN gt_sflight TO <lft_itab>.
+*
+*  ENDCASE.
+
+  cl_demo_output=>display( <lft_itab> ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form field_symbol_02
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM field_symbol_02 .
+
+  DATA : BEGIN OF ls_data,
+           mon01 TYPE i,
+           mon02 TYPE i,
+           mon03 TYPE i,
+           mon04 TYPE i,
+           mon05 TYPE i,
+           mon06 TYPE i,
+           mon07 TYPE i,
+           mon08 TYPE i,
+           mon09 TYPE i,
+           mon10 TYPE i,
+           mon11 TYPE i,
+           mon12 TYPE i,
+         END OF ls_data,
+
+         lt_data   LIKE TABLE OF ls_data,
+
+         lv_field  TYPE fieldnam,
+         lv_mon(2) TYPE n.
+
+  FIELD-SYMBOLS : <lfv_field> TYPE any.
+
+  UNASSIGN <lfv_field>.
+
+  DO 12 TIMES.
+
+    lv_mon = sy-index.
+
+    CLEAR    lv_field.
+    UNASSIGN <lfv_field>.
+
+    CONCATENATE 'LS_DATA-MON' lv_mon INTO lv_field.
+
+* 이구문은 변수나 스트럭쳐의 필드가 Full Name 으로 줘야 한다
+    ASSIGN (lv_field) TO <lfv_field>.
+
+    IF <lfv_field> IS ASSIGNED.
+      <lfv_field> = 1000.
+    ENDIF.
+
+  ENDDO.
+
+  APPEND ls_data TO lt_data.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form field_symbol_03
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM field_symbol_03 .
+
+  DATA : BEGIN OF ls_data,
+           mon01 TYPE i,
+           mon02 TYPE i,
+           mon03 TYPE i,
+           mon04 TYPE i,
+           mon05 TYPE i,
+           mon06 TYPE i,
+           mon07 TYPE i,
+           mon08 TYPE i,
+           mon09 TYPE i,
+           mon10 TYPE i,
+           mon11 TYPE i,
+           mon12 TYPE i,
+         END OF ls_data,
+
+         lt_data   LIKE TABLE OF ls_data,
+
+         lv_field  TYPE fieldnam,
+         lv_mon(2) TYPE n.
+
+  FIELD-SYMBOLS : <lfv_field> TYPE any.
+
+  UNASSIGN <lfv_field>.
+
+  DO 12 TIMES.
+
+    lv_mon = sy-index.
+
+    CLEAR    lv_field.
+    UNASSIGN <lfv_field>.
+
+    CONCATENATE 'MON' lv_mon INTO lv_field.
+
+* 이구문에서는 스트럭쳐 전용 구문이기 때문에 필드명만 주면된다
+    ASSIGN COMPONENT lv_field OF STRUCTURE ls_data TO <lfv_field>.
+
+    IF <lfv_field> IS ASSIGNED.
+      <lfv_field> = 1000.
+    ENDIF.
+
+  ENDDO.
+
+  APPEND ls_data TO lt_data.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form field_symbol_04
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM field_symbol_04 .
+
+  DATA : BEGIN OF ls_data,
+           mon01 TYPE i,
+           mon02 TYPE i,
+           mon03 TYPE i,
+           mon04 TYPE i,
+           mon05 TYPE i,
+           mon06 TYPE i,
+           mon07 TYPE i,
+           mon08 TYPE i,
+           mon09 TYPE i,
+           mon10 TYPE i,
+           mon11 TYPE i,
+           mon12 TYPE i,
+         END OF ls_data,
+
+         lt_data LIKE TABLE OF ls_data.
+
+  FIELD-SYMBOLS : <lfv_field> TYPE any.
+
+  UNASSIGN <lfv_field>.
+
+  DO 12 TIMES.
+
+    UNASSIGN <lfv_field>.
+
+    ASSIGN COMPONENT sy-index OF STRUCTURE ls_data TO <lfv_field>.
+
+    IF <lfv_field> IS ASSIGNED.
+      <lfv_field> = 1000.
+    ENDIF.
+
+  ENDDO.
+
+  APPEND ls_data TO lt_data.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form field_symbol_05
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM field_symbol_05 .
+
+*  FIELD-SYMBOLS <lfs_wa> TYPE ANY.
+*
+*  LOOP AT gt_sflight ASSIGNING <lfs_wa>.
+*
+*  ENDLOOP.
+
+  FIELD-SYMBOLS <lfv_carrid> TYPE ANY.
+
+  LOOP AT gt_sflight ASSIGNING FIELD-SYMBOL(<lfs_wa>).
+
+    UNASSIGN <lfv_carrid>.
+    ASSIGN COMPONENT 'CARRID' OF STRUCTURE <lfs_wa> TO <lfv_carrid>.
+
+    CASE <lfv_carrid>.
+      WHEN 'JL'.
+        <lfv_carrid> = 'KA'.
+
+    ENDCASE.
+
+  ENDLOOP.
+
+  cl_demo_output=>display( gt_sflight ).
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

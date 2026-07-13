@@ -1,0 +1,75 @@
+*&---------------------------------------------------------------------*
+*& Include          ZRE2PP0002_C01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Class lcl_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION FINAL.
+
+  PUBLIC SECTION.
+    METHODS:
+      handle_hotspot FOR EVENT hotspot_click OF cl_gui_alv_grid
+        IMPORTING
+          e_row_id
+          e_column_id,
+
+      handle_toolbar FOR EVENT toolbar OF cl_gui_alv_grid
+        IMPORTING
+          e_object
+          sender,
+
+      handle_user_command FOR EVENT user_command OF cl_gui_alv_grid
+        IMPORTING
+          e_ucomm,
+
+      handle_changed_finished FOR EVENT data_changed_finished OF cl_gui_alv_grid
+        IMPORTING
+          e_modified
+          et_good_cells.
+
+ENDCLASS.
+
+*&---------------------------------------------------------------------*
+*& Class (Implementation) lcl_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler IMPLEMENTATION.
+
+  METHOD handle_hotspot.
+
+    PERFORM handle_hotspot USING e_row_id e_column_id.
+
+  ENDMETHOD.
+
+  METHOD handle_toolbar.
+
+    CASE sender.
+      WHEN gcl_grid_h.
+        PERFORM handle_toolbar_h USING e_object.
+
+      WHEN gcl_grid_i.
+        PERFORM handle_toolbar_i USING e_object.
+
+    ENDCASE.
+
+  ENDMETHOD.
+
+  METHOD handle_user_command.
+
+    PERFORM handle_user_command USING e_ucomm.
+
+  ENDMETHOD.
+
+  METHOD handle_changed_finished.
+
+    PERFORM handle_changed_finished USING e_modified et_good_cells.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

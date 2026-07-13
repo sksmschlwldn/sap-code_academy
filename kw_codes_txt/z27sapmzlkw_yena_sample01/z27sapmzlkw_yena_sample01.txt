@@ -1,0 +1,29 @@
+*&---------------------------------------------------------------------*
+*& Module Pool      SAPMZLKW_YENA_SAMPLE01
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE Z27SAPMZLKW_YENA_SAMPLE01_TOP.
+*INCLUDE sapmzlkw_yena_sample01_top              .    " Global Data
+
+INCLUDE Z27SAPMZLKW_YENA_SAMPLE01_S01.
+*INCLUDE sapmzlkw_yena_sample01_s01              .  " Selection Screen
+INCLUDE Z27SAPMZLKW_YENA_SAMPLE01_O01.
+*INCLUDE sapmzlkw_yena_sample01_o01              .  " PBO-Modules
+INCLUDE Z27SAPMZLKW_YENA_SAMPLE01_I01.
+*INCLUDE sapmzlkw_yena_sample01_i01              .  " PAI-Modules
+INCLUDE Z27SAPMZLKW_YENA_SAMPLE01_F01.
+*INCLUDE sapmzlkw_yena_sample01_f01              .  " FORM-Routines
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [C5] 예나거 스크린 샘플
+
+
+*Selection texts
+*----------------------------------------------------------
+* SO_CARR D       .
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

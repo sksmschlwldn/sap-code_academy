@@ -1,0 +1,35 @@
+
+*&---------------------------------------------------------------------*
+*& Module Pool      SAPMZE2PP0006
+*&---------------------------------------------------------------------*
+*&
+*& Title : [PP] 생산 오더 생성
+*& Author : 최지우 (NCODE-E-27)
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE ZZSAPMZE2PP0006_TOP.
+*INCLUDE sapmze2pp0006_top                       .    " Global Data
+
+INCLUDE ZZSAPMZE2PP0006_C01.
+*INCLUDE sapmze2pp0006_c01                       .  " PBO-Modules
+INCLUDE ZZSAPMZE2PP0006_O01.
+*INCLUDE sapmze2pp0006_o01                       .  " PBO-Modules
+INCLUDE ZZSAPMZE2PP0006_I01.
+*INCLUDE sapmze2pp0006_i01                       .  " PAI-Modules
+INCLUDE ZZSAPMZE2PP0006_F01.
+*INCLUDE sapmze2pp0006_f01                       .  " FORM-Routines
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [PP] 생산오더 생성
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZPE2M
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

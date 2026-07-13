@@ -1,0 +1,113 @@
+*&---------------------------------------------------------------------*
+*& Include SAPMZE2MM0003_TOP                        - Module Pool      SAPMZE2MM0003
+*&---------------------------------------------------------------------*
+PROGRAM sapmze2mm0004 MESSAGE-ID zpe2m.
+
+CLASS lcl_event_handler DEFINITION DEFERRED.
+
+DATA : BEGIN OF gs_mat, " ALV Tree용 ITAB
+         matnr TYPE zte2mm0001-matnr, " 자재번호
+         maktx TYPE zte2mm0001-maktx, " 자재명
+         mtart TYPE zte2mm0001-mtart, " 자재 유형 ( 원재료, 완제품, 포장재 )
+         matkl TYPE zte2mm0001-matkl, " 품목 분류 ( 농,축,수, 가공품, 포장용품 )
+       END OF gs_mat,
+
+       gt_mat LIKE TABLE OF gs_mat,
+
+       BEGIN OF gs_info, " 자재 상세정보 용 ITAB
+         matnr        TYPE zte2mm0001-matnr, " 자재번호
+         maktx        TYPE zte2mm0001-maktx, " 자재명
+         mtart        TYPE zte2mm0001-mtart, " 자재 유형 ( 원재료, 완제품, 포장재 )
+         matkl        TYPE zte2mm0001-matkl, " 품목 분류 ( 농,축,수, 가공품, 포장용품 )
+         matkl_txt(10),
+         dislf        TYPE zte2mm0001-dislf, " 로트 크기
+         meins        TYPE zte2mm0001-meins, " 단위
+         mwskz        TYPE zte2mm0001-mwsk1, " 세금코드
+         tax_txt      TYPE zte2fi0010-text1, " 세금코드명
+         ntgew        TYPE zte2mm0001-ntgew, " 총중량
+         gewei        TYPE zte2mm0001-gewei, " 중량 단위
+         raube        TYPE zte2mm0001-raube, " 저장 상태
+         mhdhb        TYPE zte2mm0001-mhdhb, " 총보존기한
+         iprkz        TYPE zte2mm0001-iprkz, " 총 보존기한 단위
+         safstk       TYPE zte2mm0001-safstk, " 안전재고
+         bstme        TYPE zte2mm0001-bstme, " 안전재고 단위
+         lvorm        TYPE zte2mm0001-lvorm, " 자재 가용 여부
+         total_stock  TYPE zte2mm0004-labst, " 총 재고
+         stock_meins  TYPE zte2mm0004-meins, " 재고 단위
+         stat_icon    TYPE icon_d,           " 상태 아이콘
+         stat_txt(10),                      " 상태 텍스트
+         partner      TYPE zte2mm0006-partner, " 추후 추가하기
+       END OF gs_info,
+
+       gt_info  LIKE TABLE OF gs_info,
+       gs_info2 LIKE gs_info,
+
+       BEGIN OF gs_bom,               " 해당 생산품에 어떤 자재가 들어가나
+         idnrk TYPE zte2pp0003-idnrk, " 자재
+         maktx TYPE zte2mm0001-maktx, " 자재명
+         menge TYPE zte2pp0003-menge, " 수량
+         meins TYPE zte2pp0003-meins, " 단위
+       END OF gs_bom,
+
+       gt_bom LIKE TABLE OF gs_bom,
+
+       BEGIN OF gs_partner,               " 상품의 경우 공급원 보여주기
+         partner TYPE zte2mm0006-partner, " 공급원
+         company TYPE zte2us0001-company, " 회사명
+         minbm   TYPE zte2mm0006-minbm, " 최소주문수량
+         meins   TYPE zte2mm0006-meins, " 단위
+         netpr   TYPE zte2mm0006-netpr, " 단가
+         waers   TYPE zte2mm0006-waers, "단위
+         plifz   TYPE zte2mm0006-plifz, " 리드타임
+       END OF gs_partner,
+
+       gt_partner LIKE TABLE OF gs_partner,
+
+       gv_okcode  TYPE sy-ucomm,
+       gv_mode,  " 자재 수정을 위한 수정모드
+       gv_init,
+
+       " 조회용 structure
+       BEGIN OF gs_search,
+         matnr       TYPE zte2mm0001-matnr,
+         maktx       TYPE zte2mm0001-maktx,
+         mtart       TYPE zte2mm0001-mtart,
+         matkl       TYPE zte2mm0001-matkl,
+         werks       TYPE zte2mm0002-werks,
+         safstk_stat,
+       END OF gs_search.
+
+DATA: gcl_container_tree TYPE REF TO cl_gui_custom_container,
+      gcl_tree           TYPE REF TO cl_gui_alv_tree,
+      gcl_container_mat  TYPE REF TO cl_gui_custom_container,
+      gcl_grid_mat       TYPE REF TO cl_gui_alv_grid,
+      gcl_handler        TYPE REF TO lcl_event_handler,
+      gs_fcat            TYPE lvc_s_fcat,
+      gt_fcat_tree       TYPE lvc_t_fcat,
+      gt_fcat_bom        TYPE lvc_t_fcat,
+      gt_fcat_partner    TYPE lvc_t_fcat,
+      gs_layout          TYPE lvc_s_layo,
+      gs_stable          TYPE lvc_s_stbl,
+      gs_variant         TYPE disvariant,
+      " 상단 문서를 위함
+      gcl_container_doc  TYPE REF TO cl_gui_custom_container,
+      gcl_document       TYPE REF TO cl_dd_document,
+      gcl_html           TYPE REF TO cl_gui_html_viewer.
+
+" 트리 조회용 테이블 ( 트리 펼치기 )
+DATA: BEGIN OF gs_node_key,
+        node_key_1 TYPE tv_nodekey,  "Level1 node key
+        node_key_2 TYPE tv_nodekey,  "Level2 node key
+        mtart      TYPE zte2mm0001-mtart,
+        matkl      TYPE zte2mm0001-matkl,
+        matnr      TYPE zte2mm0001-matnr,
+      END OF gs_node_key,
+
+      gt_node_key LIKE TABLE OF gs_node_key,
+
+      " 트리 더블클릭 이벤트
+      gt_event    TYPE cntl_simple_events,
+      gs_event    LIKE LINE OF gt_event.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

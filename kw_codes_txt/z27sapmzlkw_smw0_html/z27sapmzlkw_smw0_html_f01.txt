@@ -1,0 +1,112 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZLKW_SMW0_HTML_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form show_html
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM show_html .
+
+  DATA : lv_obj_name TYPE wwwdataid-objid,
+         lv_url      TYPE swk_url,
+         ls_content  TYPE w3html,
+         lt_content  LIKE TABLE OF ls_content.
+
+  lv_obj_name = 'ZLKW_SMW0_HTML'.
+
+  CALL FUNCTION 'WWW_GET_SCRIPT_AND_HTML'
+    EXPORTING
+      obj_name         = lv_obj_name
+    TABLES
+      html             = lt_content
+    EXCEPTIONS
+      object_not_found = 1
+      OTHERS           = 2.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Template not found' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  REPLACE ALL OCCURRENCES OF 'mon_pay'   IN TABLE lt_content WITH '5,000,000'.
+  REPLACE ALL OCCURRENCES OF 'lunch_pay' IN TABLE lt_content WITH '13,000'.
+  REPLACE ALL OCCURRENCES OF 'gift'      IN TABLE lt_content WITH '250,000'.
+
+  CALL METHOD gcl_html->load_data
+    EXPORTING
+      url          = 'ZLKW_SMW0_HTML'
+      type         = 'text'
+      subtype      = 'html'
+      language     = sy-langu
+      charset      = 'EUC-KR'
+    IMPORTING
+      assigned_url = lv_url
+    CHANGING
+      data_table   = lt_content.
+
+  CALL METHOD gcl_html->show_url( lv_url ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_object .
+
+  DATA: lt_event TYPE cntl_simple_events,
+        ls_event TYPE cntl_simple_event.
+
+  CREATE OBJECT gcl_container
+    EXPORTING
+      container_name = 'GCL_CONTAINER'.
+
+  CREATE OBJECT gcl_html
+    EXPORTING
+      parent = gcl_container.
+
+  IF gcl_handler IS NOT BOUND.
+    gcl_handler = NEW lcl_event_handler( ).
+  ENDIF.
+
+  ls_event-eventid     =  gcl_html->m_id_sapevent.
+  ls_event-appl_event  = 'X'.
+
+  APPEND ls_event TO lt_event.
+  CLEAR  ls_event.
+
+  CALL METHOD gcl_html->set_registered_events
+    EXPORTING
+      events = lt_event.
+
+  SET HANDLER : gcl_handler->handle_click FOR gcl_html.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ACTION
+*&      --> GETDATA
+*&      --> POSTDATA
+*&      --> QUERY_TABLE
+*&---------------------------------------------------------------------*
+FORM handle_click TABLES pt_postdata    TYPE cnht_post_data_tab
+                         pt_query_table TYPE cnht_query_table
+                   USING pv_action
+                         pv_getdata.
+
+  MESSAGE i000 WITH pv_action ':' pv_getdata.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

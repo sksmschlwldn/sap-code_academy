@@ -1,0 +1,35 @@
+*&---------------------------------------------------------------------*
+*& Report ZLKW_DYNAMIC_ITAB
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE zlkw_dynamic_itab_top                   .    " Global Data
+
+INCLUDE zlkw_dynamic_itab_s01                   .  " Selection Screen
+INCLUDE zlkw_dynamic_itab_f01                   .  " FORM-Routines
+
+START-OF-SELECTION.
+  PERFORM get_table_info.
+  PERFORM make_dynamic_itab.
+
+  cl_demo_output=>display( <gt_table> ).
+
+*Text elements
+*----------------------------------------------------------
+* T01 Selection Condition
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_TAB D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

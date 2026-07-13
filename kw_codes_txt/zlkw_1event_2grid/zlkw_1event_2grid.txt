@@ -1,0 +1,41 @@
+*&---------------------------------------------------------------------*
+*& Report ZLKW_1EVENT_2GRID
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE zlkw_1event_2grid_top                   .    " Global Data
+
+INCLUDE zlkw_1event_2grid_s01                   .  " Selection Screen
+INCLUDE zlkw_1event_2grid_c01                   .  " Local Class
+INCLUDE zlkw_1event_2grid_o01                   .  " PBO-Modules
+INCLUDE zlkw_1event_2grid_i01                   .  " PAI-Modules
+INCLUDE zlkw_1event_2grid_f01                   .  " FORM-Routines
+
+START-OF-SELECTION.
+  PERFORM get_data.
+
+  CALL SCREEN '0100'.
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [C5] 1개의 이벤트 메소드로 2개의 Grid 처리 샘플
+
+*Text elements
+*----------------------------------------------------------
+* T01 Selection Condition
+
+
+*Selection texts
+*----------------------------------------------------------
+* SO_CARR D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

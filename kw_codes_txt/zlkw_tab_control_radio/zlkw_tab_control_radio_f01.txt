@@ -1,0 +1,210 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_TAB_CONTROL_RADIO_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form get_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_data .
+  DATA : lv_cnt1(2),
+         lv_cnt2(2).
+
+  CLEAR   : gs_scarr, gs_spfli, gv_title1, gv_title2.
+  REFRESH : gt_scarr, gt_spfli.
+
+  SELECT *
+    INTO CORRESPONDING FIELDS OF TABLE gt_scarr
+    FROM scarr
+   WHERE carrid IN so_carr.
+
+  SELECT *
+    INTO CORRESPONDING FIELDS OF TABLE gt_spfli
+    FROM spfli
+   WHERE carrid IN so_carr.
+
+  IF gt_scarr IS INITIAL AND
+     gt_spfli IS INITIAL.
+
+    MESSAGE s000 WITH 'Data not found'.
+    LEAVE LIST-PROCESSING.
+
+  ENDIF.
+
+  lv_cnt1 = lines( gt_scarr ).
+  lv_cnt2 = lines( gt_spfli ).
+
+  CONCATENATE 'Scarr(' lv_cnt1 ')건' INTO gv_title1 SEPARATED BY space.
+  CONCATENATE 'Spfli(' lv_cnt2 ')건' INTO gv_title2 SEPARATED BY space.
+
+  CONDENSE : gv_title1, gv_title2.
+
+  SORT : gt_scarr BY carrid,
+         gt_spfli BY carrid.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fcat .
+
+  IF gt_fcat_1 IS INITIAL.
+
+    PERFORM set_fcat_1 USING :
+    'X'   'CARRID'    ' '   'SCARR'   'CARRID',
+    ' '   'CARRNAME'  ' '   'SCARR'   'CARRNAME',
+    ' '   'CURRCODE'  ' '   'SCARR'   'CURRCODE',
+    ' '   'URL'       ' '   'SCARR'   'URL'.
+
+  ENDIF.
+
+  IF gt_fcat_2 IS INITIAL.
+
+    PERFORM set_fcat_2 USING :
+    'X'   'CARRID'      ' '    'SPFLI'   'CARRID',
+    ' '   'CONNID'      ' '    'SPFLI'   'CONNID',
+    ' '   'COUNTRYFR'   ' '    'SPFLI'   'COUNTRYFR',
+    ' '   'COUNTRYTO'   ' '    'SPFLI'   'COUNTRYTO',
+    ' '   'CITYFROM'    ' '    'SPFLI'   'CITYFROM',
+    ' '   'CITYTO'      ' '    'SPFLI'   'CITYTO',
+    ' '   'FLTYPE'      ' '    'SPFLI'   'FLTYPE',
+    ' '   'PERIOD'      ' '    'SPFLI'   'PERIOD'.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_1
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat_1 USING pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  APPEND gs_fcat TO gt_fcat_1.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_2
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat_2 USING pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'FLTYPE'.
+      gs_fcat-checkbox = 'X'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_2.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form modify_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM modify_screen .
+
+  LOOP AT SCREEN.
+
+    IF screen-name EQ 'TITLE1'.
+      screen-name = '5개'.
+      MODIFY SCREEN.
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_object .
+
+  CREATE OBJECT gcl_container_1
+    EXPORTING
+      container_name = 'GCL_CONTAINER_1'.
+
+  CREATE OBJECT gcl_grid_1
+    EXPORTING
+      i_parent = gcl_container_1.
+
+  CREATE OBJECT gcl_container_2
+    EXPORTING
+      container_name = 'GCL_CONTAINER_2'.
+
+  CREATE OBJECT gcl_grid_2
+    EXPORTING
+      i_parent = gcl_container_2.
+
+  gs_variant-report  = sy-repid.
+  gs_variant-handle = 'TAB1'.
+
+  CALL METHOD gcl_grid_1->set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_scarr
+      it_fieldcatalog = gt_fcat_1.
+
+  gs_variant-handle = 'TAB2'.
+
+  CALL METHOD gcl_grid_2->set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_spfli
+      it_fieldcatalog = gt_fcat_2.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

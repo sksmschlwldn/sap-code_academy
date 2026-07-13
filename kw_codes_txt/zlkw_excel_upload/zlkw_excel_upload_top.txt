@@ -1,0 +1,49 @@
+*&---------------------------------------------------------------------*
+*& Include ZLKW_EXCEL_UPLOAD_TOP                    - Report ZLKW_EXCEL_UPLOAD
+*&---------------------------------------------------------------------*
+REPORT zlkw_excel_upload MESSAGE-ID oo.
+
+TABLES : sscrfields.
+
+INCLUDE officeintegrationinclude.
+
+TYPE-POOLS : truxs, slis, soi, icon.
+
+*smw0 엑셀다운 기능 구현을 위한 전역변수 선언
+DATA : gt_doc_table      TYPE TABLE OF w3mime,
+       gv_doc_size       TYPE i,
+       gv_doc_type(80)   VALUE soi_doctype_excel97_sheet,
+       gv_doc_format(80),
+       gcl_link_server   TYPE REF TO i_oi_link_server,
+       gcl_factory       TYPE REF TO i_oi_document_factory,
+       gcl_document      TYPE REF TO i_oi_document_proxy,
+       gv_retcode        TYPE t_oi_ret_string.
+
+*엑셀 업로드
+DATA : gt_excel TYPE TABLE OF alsmex_tabline,
+       gs_excel TYPE alsmex_tabline.
+
+DATA : BEGIN OF gs_data,
+         matnr TYPE mara-matnr,
+         maktx TYPE makt-maktx,
+         menge TYPE menge_d,
+         meins TYPE meins,
+         netpr TYPE netpr,
+         waers TYPE waers,
+       END OF gs_data,
+
+       gt_data   LIKE TABLE OF gs_data,
+
+       gv_okcode TYPE sy-ucomm.
+
+* ALV 관련
+DATA : gcl_docking_container TYPE REF TO cl_gui_docking_container,
+       gcl_grid              TYPE REF TO cl_gui_alv_grid,
+       gt_fcat               TYPE lvc_t_fcat,
+       gs_fcat               TYPE lvc_s_fcat,
+       gs_layout             TYPE lvc_s_layo,
+       gs_variant            TYPE disvariant,
+       gs_stable             TYPE lvc_s_stbl.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

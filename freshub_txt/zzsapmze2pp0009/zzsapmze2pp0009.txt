@@ -1,0 +1,36 @@
+*&---------------------------------------------------------------------*
+*& Module Pool      SAPMZE2PP0009
+*&---------------------------------------------------------------------*
+*&
+*& Title : [PP] 생산오더 승인, 자재소요량 계산
+*& Author : 최지우 (NCODE-E-27)
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE ZZSAPMZE2PP0009_TOP.
+*INCLUDE sapmze2pp0009_top                       .    " Global Data
+
+INCLUDE ZZSAPMZE2PP0009_C01.
+*INCLUDE sapmze2pp0009_c01                       .  " Local Class
+INCLUDE ZZSAPMZE2PP0009_O01.
+*INCLUDE sapmze2pp0009_o01                       .  " PBO-Modules
+INCLUDE ZZSAPMZE2PP0009_I01.
+*INCLUDE sapmze2pp0009_i01                       .  " PAI-Modules
+INCLUDE ZZSAPMZE2PP0009_F01.
+*INCLUDE sapmze2pp0009_f01                       .  " FORM-Routines
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [PP] 생산오더 승인 및 자재소요량 계산
+* T0103 --> 담당자 지정
+* T0104 --> 생산 오더 수동 생성
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZPE2M
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

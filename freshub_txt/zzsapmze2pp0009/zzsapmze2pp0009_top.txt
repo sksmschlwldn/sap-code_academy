@@ -1,0 +1,132 @@
+*&---------------------------------------------------------------------*
+*& Include SAPMZE2PP0009_TOP                        - Module Pool      SAPMZE2PP0009
+*&---------------------------------------------------------------------*
+PROGRAM zzsapmze2pp0009 MESSAGE-ID zpe2m.
+
+CONTROLS gc_tab TYPE TABSTRIP.
+
+DATA : gv_subscreen  TYPE sy-dynnr VALUE '0101',
+       gv_pressedtab TYPE sy-ucomm VALUE 'MRP'.
+
+CLASS : lcl_event_handler DEFINITION DEFERRED.
+
+DATA : BEGIN OF gs_order,
+         stat_icon     TYPE icon_d,
+         aufnr         TYPE zte2pp0009-aufnr, " 생산오더
+         auart         TYPE zte2pp0009-auart, " 생산 유형
+         auart_txt(10),
+         plnbez        TYPE zte2pp0009-plnbez, " 자재
+         maktx         TYPE zte2mm0001-maktx, " 자재명
+         gamng         TYPE zte2pp0009-gamng, " 수량
+         meins         TYPE zte2pp0009-meins, " 단위
+         gstrp         TYPE zte2pp0009-gstrp, "계획시작일
+         gltrp         TYPE zte2pp0009-gltrp, " 계획종료일
+         plnum         TYPE zte2pp0009-plnum, " 생산계획번호
+         plpos         TYPE zte2pp0009-plpos, " 생산계획항목
+         vbeln         TYPE zte2pp0009-vbeln,  " 판매오더번호
+         posnr         TYPE zte2pp0009-posnr, " 판매오더항목
+         apstat        TYPE zte2pp0009-apstat,
+         stat_txt(10), " 승인상태
+         color         TYPE lvc_t_scol,
+         style         TYPE lvc_t_styl,
+       END OF gs_order,
+
+       gt_order LIKE TABLE OF gs_order,
+
+       BEGIN OF gs_mrp,
+         matnr          TYPE zte2pp0003-idnrk, " 자재번호
+         maktx          TYPE zte2mm0001-maktx, " 자재명
+         menge          TYPE zte2pp0003-menge, " 기준수량
+         meins          TYPE zte2pp0002-meins, "기준 단위 (g)
+         req_qty_g      TYPE zte2pp0003-menge, " 소요량   (g)
+         req_qty_u      TYPE zte2pp0003-menge, " 소요량   (u)
+*         avail_qty_g    TYPE zte2pp0003-menge, " 가용재고 (g)
+         avail_qty_g    TYPE p LENGTH 16 DECIMALS 3, " 가용재고 (g)
+         avail_qty_u    TYPE zte2pp0003-menge, " 가용재고 (u)
+         shortage_g     TYPE zte2pp0003-menge, " 부족재고 (g)
+         shortage_u     TYPE zte2pp0003-menge, " 부족재고 (u)
+         unit_meins     TYPE zte2pp0002-meins, " 단위 (u)
+         status         TYPE icon_d,
+         status_txt(10),
+         color          TYPE lvc_t_scol,
+       END OF gs_mrp,
+
+       gt_mrp LIKE TABLE OF gs_mrp,
+
+       BEGIN OF gs_routing,
+         vornr    TYPE zte2pp0005-vornr, " 작업번호
+         ktext    TYPE zte2pp0001-ktext, " 작업장 - 명
+         ltxa1    TYPE zte2pp0005-ltxa1, " 작업명
+         vgw02    TYPE zte2pp0005-vgw02, " 기준 시간
+         vge02    TYPE zte2pp0005-vge02, " 기준 단위
+*         req_time TYPE zte2pp0005-vgw02, " 예상 소요 시간 cds로만들어야지~^^
+         req_time TYPE p  LENGTH 7 DECIMALS 2 , " 예상 소요 시간 cds로만들어야지~^^
+         bmsch    TYPE zte2pp0005-bmsch, " 기준 수량
+         meins    TYPE zte2pp0005-meins, " 기준 단위
+       END OF gs_routing,
+
+       gt_routing LIKE TABLE OF gs_routing,
+
+       BEGIN OF gs_search,
+         apstat     TYPE zte2pp0009-apstat,
+         gstrp_low  TYPE zte2pp0009-gstrp,
+         gstrp_high TYPE zte2pp0009-gstrp,
+         matnr      TYPE zte2mm0001-matnr,
+       END OF gs_search,
+
+       gv_act_all,
+       gv_act_mto,
+       gv_act_mts,
+       gv_act_stk,
+       gv_ord_type, " S : 승인, R : 반려 + 구매요청
+
+       gv_okcode   TYPE sy-ucomm,
+
+       BEGIN OF gs_doc,
+         converted TYPE  sdydo_text_element,
+         pending   TYPE  sdydo_text_element,
+       END OF gs_doc,
+
+       BEGIN OF gs_pernr,
+         pernr TYPE zte2mm0019-pernr,
+         sname TYPE zte2hr0002-sname,
+       END OF gs_pernr,
+*        gv_pernr  TYPE zte2mm0019-pernr,
+*        gv_name   TYPE zte2hr0002-sname,
+       gv_pernr_invalid,
+
+       BEGIN OF gs_new_order,
+         plnbez TYPE zte2pp0009-plnbez,
+         maktx  TYPE zte2mm0001-maktx,
+         gamng  TYPE zte2pp0009-gamng,
+         meins  TYPE zte2pp0009-meins,
+         gstrp  TYPE zte2pp0009-gstrp,
+       END OF gs_new_order.
+
+
+
+DATA : gcl_container_order TYPE REF TO cl_gui_custom_container,
+       gcl_grid_order      TYPE REF TO cl_gui_alv_grid,
+       gcl_container_mrp   TYPE REF TO cl_gui_custom_container,
+       gcl_grid_mrp        TYPE REF TO cl_gui_alv_grid,
+       gcl_container_rou   TYPE REF TO cl_gui_custom_container,
+       gcl_grid_rou        TYPE REF TO cl_gui_alv_grid,
+       gcl_handler         TYPE REF TO lcl_event_handler,
+       gs_fcat             TYPE lvc_s_fcat,
+       gt_fcat_order       TYPE lvc_t_fcat,
+       gt_fcat_mrp         TYPE lvc_t_fcat,
+       gt_fcat_rou         TYPE lvc_t_fcat,
+       gs_layout           TYPE lvc_s_layo,
+       gs_stable           TYPE lvc_s_stbl,
+       gs_variant          TYPE disvariant,
+       gs_alv_toolbar      TYPE stb_button,
+       " 상단 문서를 위함
+       gcl_splitter        TYPE REF TO cl_gui_splitter_container,
+       gcl_container_doc   TYPE REF TO cl_gui_custom_container,
+       gcl_container_lf    TYPE REF TO cl_gui_container,
+       gcl_container_rg    TYPE REF TO cl_gui_container,
+       gcl_document_lf     TYPE REF TO cl_dd_document,
+       gcl_document_rg     TYPE REF TO cl_dd_document.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

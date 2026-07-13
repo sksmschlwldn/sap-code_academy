@@ -1,0 +1,54 @@
+*&---------------------------------------------------------------------*
+*& Report ZLKW_EXCEL_UPLOAD
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE zlkw_excel_upload_top                   .    " Global Data
+
+INCLUDE zlkw_excel_upload_s01                   .  " Selection Screen
+INCLUDE zlkw_excel_upload_o01                   .  " PBO-Modules
+INCLUDE zlkw_excel_upload_i01                   .  " PAI-Modules
+INCLUDE zlkw_excel_upload_f01                   .  " FORM-Routines
+
+INITIALIZATION.
+  PERFORM set_btn.
+
+AT SELECTION-SCREEN.
+  PERFORM scr_command. "Template 다운로드
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR pa_fname.
+  PERFORM get_fname.
+
+START-OF-SELECTION.
+  PERFORM upload_file.
+
+  CALL SCREEN '0100'.
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [C5] Excel Upload Sample
+
+*Text elements
+*----------------------------------------------------------
+* E01 Form not found
+* E02 Upload file is empty
+* M01 Template Download
+* M02 자재코드 업로드 양식
+* M03 File selection canceled
+* T01 Upload File
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_FNAME D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

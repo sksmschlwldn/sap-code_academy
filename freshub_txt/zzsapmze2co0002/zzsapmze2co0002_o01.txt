@@ -1,0 +1,53 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZE2CO0002_O01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Module STATUS_0100 OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS 'S0100'.
+  SET TITLEBAR 'T0100'.
+*  SET TITLEBAR  'T0100' WITH sy-uname. --> &쓰면됨
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Module SET_FCAT OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE set_fcat OUTPUT.
+
+  IF gt_fcat_mat IS INITIAL.
+
+    PERFORM set_init.
+    PERFORM get_materials.
+    PERFORM set_fcat.
+
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Module MAKE_OBJECTS OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE make_objects OUTPUT.
+
+  IF gcl_container_mat IS INITIAL.
+
+    PERFORM make_objects.
+    IF gv_year IS INITIAL.
+      gv_year = sy-datum(4).
+    ENDIF.
+    PERFORM set_gv_year.
+    PERFORM expand_tree.
+
+  ENDIF.
+
+  PERFORM set_gv_poper.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

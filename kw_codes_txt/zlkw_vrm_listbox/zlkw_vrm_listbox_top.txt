@@ -1,0 +1,7 @@
+*&---------------------------------------------------------------------*
+*& Include ZLKW_VRM_LISTBOX_TOP                     - Report ZLKW_VRM_LISTBOX
+*&---------------------------------------------------------------------*
+REPORT zlkw_vrm_listbox MESSAGE-ID oo.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

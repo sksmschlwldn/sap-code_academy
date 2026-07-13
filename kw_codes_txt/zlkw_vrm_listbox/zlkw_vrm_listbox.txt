@@ -1,0 +1,34 @@
+*&---------------------------------------------------------------------*
+*& Report ZLKW_VRM_LISTBOX
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE zlkw_vrm_listbox_top                    .    " Global Data
+
+INCLUDE zlkw_vrm_listbox_s01                    .  " PBO-Modules
+INCLUDE zlkw_vrm_listbox_f01                    .  " FORM-Routines
+
+
+* 아래의 로직은 100번 스크린의 PROCESS ON VALUE-REQUEST 에서도 당연히 가능함
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR pa_carr.
+  PERFORM f4_carrid.
+
+*Text elements
+*----------------------------------------------------------
+* T01 Selection Condition
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_CARR D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

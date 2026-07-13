@@ -1,0 +1,33 @@
+*&---------------------------------------------------------------------*
+*& Include ZLKW_GOS_FILE_UPLOAD_TOP                 - Report ZLKW_GOS_FILE_UPLOAD
+*&---------------------------------------------------------------------*
+REPORT zlkw_gos_file_upload MESSAGE-ID oo.
+
+TABLES : spfli.
+
+CONSTANTS : gc_typeid TYPE srgbtbrel-typeid_a VALUE 'ZC501MM', "임의로 모듈별로 정한다
+            gc_catid  TYPE srgbtbrel-catid_a  VALUE 'BO'.
+
+DATA : BEGIN OF gs_list,
+         carrid   TYPE spfli-carrid,
+         connid   TYPE spfli-connid,
+         airpfrom TYPE spfli-airpfrom,
+         airpto   TYPE spfli-airpto,
+         attache  TYPE icon_d,               "파일 업로드 유무
+       END OF gs_list,
+
+       gt_list LIKE TABLE OF gs_list.
+
+* ALV 관련
+DATA : gcl_container TYPE REF TO cl_gui_docking_container,
+       gcl_grid      TYPE REF TO cl_gui_alv_grid,
+       gs_fcat       TYPE lvc_s_fcat,
+       gt_fcat       TYPE lvc_t_fcat,
+       gs_layout     TYPE lvc_s_layo,
+       gs_stable     TYPE lvc_s_stbl,
+       gs_variant    TYPE disvariant.
+
+DATA : gv_okcode TYPE sy-ucomm.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

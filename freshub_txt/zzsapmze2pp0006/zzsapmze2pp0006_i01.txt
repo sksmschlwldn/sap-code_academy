@@ -1,0 +1,62 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZE2PP0006_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0100 INPUT.
+
+  CALL METHOD : gcl_grid_plan->free, gcl_container_plan->free.
+
+  FREE: gcl_grid_plan, gcl_container_plan.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  F4_MONTH_SELECT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE f4_month_select INPUT.
+
+  PERFORM f4_month_select.
+  PERFORM get_plan.
+  PERFORM refresh_grid.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'SEARCH'.
+      CLEAR gv_okcode.
+      PERFORM get_plan.
+      PERFORM set_icon.
+      PERFORM refresh_doc.
+      PERFORM refresh_grid.
+*
+*    WHEN 'CREATE_ORDER'.
+*      CLEAR gv_okcode.
+*      PERFORM create_order.
+
+    WHEN 'REFRESH'. " 이거지금좀존나이상함바꿔야됨
+      CLEAR gv_okcode.
+      CLEAR gs_info.
+      PERFORM get_plan.
+      PERFORM set_icon.
+      PERFORM refresh_doc.
+      PERFORM refresh_grid.
+
+  ENDCASE.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

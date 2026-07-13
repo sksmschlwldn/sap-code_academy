@@ -1,0 +1,1469 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZE2MM0003_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form get_tree_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_tree_data .
+
+*  DATA : lr_mtart TYPE RANGE OF zte2mm0001-mtart,
+*         ls_mtart LIKE LINE OF  lr_mtart.
+*
+*  IF gs_search-mtart IS NOT INITIAL.
+*    ls_mtart-sign   = 'I'.
+*    ls_mtart-option = 'EQ'.
+*    ls_mtart-low    = gs_search-mtart.
+*
+*    APPEND ls_mtart TO lr_mtart.
+*    CLEAR  ls_mtart.
+*
+*  ENDIF.
+
+  REFRESH : gt_mat.
+
+  SELECT matnr maktx mtart matkl
+    INTO CORRESPONDING FIELDS OF TABLE gt_mat
+    FROM zte2mm0001.
+
+  IF sy-subrc <> 0.
+    MESSAGE s000 WITH '조건에 맞는 자재 데이터가 없습니다.' DISPLAY LIKE 'E'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_tree
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fcat_tree .
+
+  gs_layout-zebra      = 'X'.
+  gs_layout-cwidth_opt = 'X'.
+  gs_layout-sel_mode   = 'D'.
+  gs_layout-no_toolbar = 'X'.
+
+  gs_stable-col = 'X'.
+  gs_stable-row = 'X'.
+
+  PERFORM set_fcat USING :
+        'MATNR'   ' '   'ZTE2MM0001'  'MATNR'. " 자재명에 따른 자재코드
+
+  PERFORM set_fcat_bom USING :
+        'X'   'IDNRK'   ' '    'ZTE2MM0001'   'MATNR',
+        ' '   'MAKTX'   ' '    'ZTE2MM0001'   ' ',
+        ' '   'MENGE'   ' '    'ZTE2PP0003'   ' ',
+        ' '   'MEINS'   ' '    'ZTE2PP0003'   ' '.
+
+  PERFORM set_fcat_parter USING :
+        'X'   'PARTNER'   ' '   'ZTE2MM0006'    ' ',
+        ' '   'COMPANY'   ' '   'ZTE2US0001'    ' ',
+        ' '   'MINBM'   ' '   'ZTE2MM0006'    ' ',
+        ' '   'MEINS'   ' '   'ZTE2MM0006'    ' ',
+        ' '   'NETPR'   ' '   'ZTE2MM0006'    ' ',
+        ' '   'WAERS'   ' '   'ZTE2MM0006'    ' ',
+        ' '   'PLIFZ'   '리드타임'   'ZTE2MM0006'    ' '.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat  USING  pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+*  CASE pv_field.
+*
+*  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_tree.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_object .
+
+  DATA l_hirarchy_header TYPE treev_hhdr.
+
+  l_hirarchy_header-heading   = '자재'.
+  l_hirarchy_header-width     = '40'.
+  l_hirarchy_header-width_pix = 'X'.
+
+  CREATE OBJECT gcl_container_tree
+    EXPORTING
+      container_name = 'GCL_CONTAINER_TREE'.
+
+  CREATE OBJECT gcl_tree
+    EXPORTING
+      parent              = gcl_container_tree
+      node_selection_mode = cl_gui_column_tree=>node_sel_mode_multiple
+      item_selection      = 'X'
+      no_html_header      = 'X'
+      no_toolbar          = space.
+
+  CALL METHOD gcl_tree->column_optimize
+    EXPORTING
+      i_end_column = gcl_tree->c_hierarchy_column_name.
+
+  CALL METHOD gcl_tree->get_registered_events
+    IMPORTING
+      events = gt_event.
+
+  gs_event-eventid    = cl_gui_column_tree=>eventid_node_double_click.
+  gs_event-appl_event = 'X'.
+
+  APPEND gs_event TO gt_event.
+
+  CALL METHOD gcl_tree->set_registered_events
+    EXPORTING
+      events = gt_event.
+
+  IF gcl_handler IS INITIAL.
+    CREATE OBJECT gcl_handler.
+  ENDIF.
+
+  SET HANDLER : gcl_handler->handle_double_click FOR gcl_tree.
+
+  gs_variant-report = sy-repid.
+
+  CALL METHOD gcl_tree->set_table_for_first_display
+    EXPORTING
+      i_save              = 'A'
+      is_variant          = gs_variant
+      is_hierarchy_header = l_hirarchy_header
+    CHANGING
+      it_outtab           = gt_mat
+      it_fieldcatalog     = gt_fcat_tree.
+
+  PERFORM get_tree_data.
+  PERFORM make_hierarchy.
+
+**********************************************************************
+* 상단 문서 생성
+**********************************************************************
+  CREATE OBJECT gcl_container_doc
+    EXPORTING
+      container_name = 'GCL_CONTAINER_DOC'.
+
+*  PERFORM init_html_guide.
+
+  CREATE OBJECT gcl_document
+    EXPORTING
+      style            = 'ALV_TO_HTML'
+      background_color = 1
+      no_margins       = space.
+
+  PERFORM set_document USING gcl_document.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_hierarchy
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM make_hierarchy .
+
+  DATA : lv_first,
+         lv_text(12).
+
+  DATA : BEGIN OF ls_mtart,
+           mtart TYPE zte2mm0001-mtart,
+         END OF ls_mtart,
+
+         lt_mtart LIKE TABLE OF ls_mtart,
+
+         BEGIN OF ls_matkl,
+           mtart TYPE zte2mm0001-mtart,
+           matkl TYPE zte2mm0001-matkl,
+         END OF ls_matkl,
+
+         lt_matkl    LIKE TABLE OF ls_matkl,
+         lt_data     LIKE TABLE OF gs_mat,
+
+         lv_level_1  TYPE lvc_nkey,
+         lv_level_2  TYPE lvc_nkey,
+         lv_node_key TYPE lvc_nkey,
+         lv_tabix    TYPE sy-tabix,
+
+* 검색 itab 구성키 위한 변수
+         lv_key_1    TYPE tv_nodekey,
+         lv_key_2    TYPE tv_nodekey,
+         lv_cnt      TYPE sy-tabix,
+
+* NODE 1,2 초기화
+         ls_empty    LIKE gs_mat.
+
+  CLEAR   : ls_mtart, ls_matkl, lv_first, lv_cnt, lv_key_1, lv_key_2, ls_empty.
+  REFRESH : lt_data, lt_mtart, lt_matkl.
+
+  APPEND LINES OF gt_mat TO lt_data.
+
+* 트리구성시 gt_mat에 노드가 쌓이는 구조.
+* 기존 데이터는 lt_data에 보관 후 gt_mat에 다시 쌓음.
+  REFRESH : gt_mat.
+
+  SORT lt_data BY mtart matkl matnr.
+
+  lt_mtart = CORRESPONDING #( lt_data ).
+  lt_matkl = CORRESPONDING #( lt_data ).
+
+  SORT : lt_mtart BY mtart,
+         lt_matkl BY mtart matkl.
+
+  DELETE ADJACENT DUPLICATES FROM : lt_mtart COMPARING mtart,
+                                    lt_matkl COMPARING mtart matkl.
+
+  LOOP AT lt_mtart INTO ls_mtart.
+
+    READ TABLE lt_mtart INTO ls_mtart WITH KEY mtart = ls_mtart-mtart
+    BINARY SEARCH.
+
+    IF sy-subrc <> 0.
+      CONTINUE.
+    ENDIF.
+
+    lv_tabix = sy-tabix.
+
+    lv_cnt  += 1.
+    lv_key_1 = lv_cnt.
+
+    READ TABLE lt_data INTO gs_mat WITH KEY mtart = ls_mtart-mtart
+    BINARY SEARCH.
+
+    IF sy-subrc <> 0.
+      CONTINUE.
+    ENDIF.
+
+    CASE gs_mat-mtart.
+      WHEN 'FERT'.
+        lv_text = '완제품'.
+      WHEN 'ROH'.
+        lv_text = '구매재'.
+      WHEN OTHERS.
+        lv_text = '포장재'.
+    ENDCASE.
+
+* Level 1 Node
+    PERFORM add_node USING ls_empty lv_text ' ' lv_level_1.
+
+    LOOP AT lt_matkl INTO ls_matkl FROM lv_tabix WHERE mtart = ls_mtart-mtart.
+
+      READ TABLE lt_data INTO gs_mat WITH KEY mtart = ls_mtart-mtart
+                                              matkl = ls_matkl-matkl
+                                              BINARY SEARCH.
+      IF sy-subrc <> 0.
+        CONTINUE.
+      ENDIF.
+
+      lv_tabix = sy-tabix.
+
+      CLEAR lv_first.
+
+      LOOP AT lt_data INTO gs_mat FROM lv_tabix WHERE mtart = ls_mtart-mtart
+                                                  AND matkl = ls_matkl-matkl.
+
+        IF lv_first IS INITIAL.
+
+          CASE gs_mat-matkl.
+            WHEN 'AG'.
+              lv_text = '농산물'.
+            WHEN 'NV'.
+              lv_text = '축산물'.
+            WHEN 'SF'.
+              lv_text = '수산물'.
+            WHEN 'PR'.
+              lv_text = '드레싱'.
+            WHEN 'PM'.
+              lv_text = '신선식품'.
+            WHEN 'IP'.
+              lv_text = '내부 포장재'.
+            WHEN 'OP'.
+              lv_text = '외부 포장재'.
+            WHEN 'PP'.
+              lv_text = '생산용 포장재'.
+            WHEN OTHERS.
+          ENDCASE.
+
+* Level 2 Node
+          PERFORM add_node USING ls_empty lv_text lv_level_1 lv_level_2.
+          lv_first ='X'.
+          lv_cnt += 1.
+          lv_key_2 = lv_cnt.
+
+        ENDIF.
+
+* Child Node
+        lv_cnt += 1.
+        PERFORM add_node USING gs_mat gs_mat-maktx lv_level_2 lv_node_key.
+
+        gs_node_key = CORRESPONDING #( gs_mat ).
+        gs_node_key = VALUE #( BASE gs_node_key
+                               node_key_1 = lv_key_1
+                               node_key_2 = lv_key_2 ).
+
+        APPEND gs_node_key TO gt_node_key.
+        CLEAR  gs_node_key.
+
+      ENDLOOP.
+
+    ENDLOOP.
+
+  ENDLOOP.
+
+  CALL METHOD gcl_tree->update_calculations.
+  CALL METHOD gcl_tree->frontend_update.
+
+  SORT gt_node_key BY node_key_1 node_key_2.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form add_node
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_MAT
+*&      --> GS_MAT_MAKTX
+*&      --> LV_LEVEL_2
+*&      <-- LV_NODE_KEY
+*&---------------------------------------------------------------------*
+FORM add_node USING    ps_data      LIKE gs_mat
+                       pv_text
+                       pv_relat_key TYPE lvc_nkey
+                       pv_node_key  TYPE lvc_nkey.
+
+  DATA : lv_node_text TYPE lvc_value.
+
+  lv_node_text = pv_text.
+
+  CALL METHOD gcl_tree->add_node
+    EXPORTING
+      i_relat_node_key = pv_relat_key
+      i_relationship   = cl_gui_column_tree=>relat_last_child
+      i_node_text      = lv_node_text
+      is_outtab_line   = ps_data
+    IMPORTING
+      e_new_node_key   = pv_node_key.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_double_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> NODE_KEY
+*&---------------------------------------------------------------------*
+FORM handle_double_click  USING  pv_node_key TYPE lvc_nkey.
+
+  DATA : ls_outtab    LIKE gs_mat,
+         lv_tax_txt   LIKE gs_info-tax_txt,
+         lv_matkl_txt LIKE gs_info-matkl_txt,
+         lt_domain    TYPE TABLE OF dd07v,
+         ls_domain    LIKE LINE OF lt_domain.
+
+  CALL METHOD gcl_tree->get_outtab_line
+    EXPORTING
+      i_node_key    = pv_node_key
+    IMPORTING
+      e_outtab_line = ls_outtab.
+
+  IF ls_outtab-matnr IS INITIAL.
+    EXIT.
+  ENDIF.
+
+  SELECT SINGLE
+           a~matnr, a~maktx, a~mtart, a~matkl, a~dislf,  a~lvorm,
+           a~meins, a~raube, a~mhdhb, a~iprkz, a~safstk, a~bstme,
+           a~mwskz, a~ntgew, a~gewei,
+           CASE
+             WHEN b~total_stock IS NULL THEN 0
+             WHEN b~total_stock < 0     THEN 0 " 혹시 마이너스 재고면 0 처리
+             ELSE b~total_stock
+           END AS total_stock,
+           a~meins AS stock_meins,
+           CASE
+             WHEN c~stock_status = '정상' THEN '@5B@'
+             WHEN c~stock_status = '과잉'
+               OR c~stock_status = '위험'
+               OR c~stock_status = '확인필요'  THEN '@5C@'
+             WHEN c~stock_status = '주의' THEN '@5D@'
+           ELSE '@5F@'
+           END AS stat_icon,
+           c~stock_status AS stat_txt
+
+      FROM zte2mm0001 AS a
+      LEFT OUTER JOIN zcds_e2_pp_0001 AS b
+        ON a~matnr = b~matnr
+     INNER JOIN zcds_e2_mm_0002 AS c
+        ON a~matnr = c~matnr
+     WHERE a~matnr = @ls_outtab-matnr
+      INTO CORRESPONDING FIELDS OF @gs_info.
+
+  " 세금 내역
+  SELECT SINGLE text1
+    FROM zte2fi0010
+   WHERE mwskz = @gs_info-mwskz
+    INTO @lv_tax_txt.
+
+  gs_info-tax_txt = lv_tax_txt.
+
+  " 품목분류 내역
+  CALL FUNCTION 'GET_DOMAIN_VALUES'
+    EXPORTING
+      domname    = 'ZDE2_MM_MATKL'
+      text       = 'X'
+    TABLES
+      values_tab = lt_domain.
+
+  READ TABLE lt_domain INTO ls_domain
+    WITH KEY domvalue_l = gs_info-matkl.
+
+  IF sy-subrc = 0.
+    gs_info-matkl_txt = ls_domain-ddtext.
+  ENDIF.
+
+  IF sy-subrc <> 0.
+    EXIT.
+  ENDIF.
+
+  PERFORM get_mat_data USING ls_outtab-matnr
+                             ls_outtab-mtart.
+
+  CALL METHOD cl_gui_cfw=>set_new_ok_code
+    EXPORTING
+      new_code = 'GO_PAI'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_bom
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat_bom  USING   pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'MENGE'.
+      gs_fcat-qfieldname = 'MEINS'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_bom.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_parter
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat_parter  USING  pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'MINBM'.
+      gs_fcat-qfieldname = 'MEINS'.
+    WHEN 'NETPR'.
+      gs_fcat-cfieldname = 'WAERS'.
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_partner.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_mat_alv
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_mat_alv USING pv_matnr TYPE zte2mm0001-matnr
+                          pv_mtart TYPE zte2mm0001-mtart.
+
+  DATA : lt_fcat TYPE lvc_t_fcat.
+
+  REFRESH : lt_fcat.
+
+  FIELD-SYMBOLS : <lt_data> TYPE ANY TABLE.
+
+  IF gcl_container_mat IS INITIAL.
+
+    CREATE OBJECT gcl_container_mat
+      EXPORTING
+        container_name = 'GCL_CONTAINER_MAT'.
+
+    CREATE OBJECT gcl_grid_mat
+      EXPORTING
+        i_parent = gcl_container_mat.
+
+  ENDIF.
+
+  CASE pv_mtart.
+    WHEN 'FERT'.
+      lt_fcat = gt_fcat_bom.
+      ASSIGN gt_bom TO <lt_data>.
+
+    WHEN OTHERS.
+      lt_fcat = gt_fcat_partner.
+      ASSIGN gt_partner TO <lt_data>.
+
+  ENDCASE.
+
+  CALL METHOD gcl_grid_mat->set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = <lt_data>
+      it_fieldcatalog = lt_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_mat_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_mat_data USING pv_matnr TYPE zte2mm0001-matnr
+                        pv_mtart TYPE zte2mm0001-mtart.
+
+
+  CASE pv_mtart.
+
+    WHEN 'FERT'.
+      REFRESH gt_bom.
+
+      SELECT a~idnrk, b~maktx, a~menge, a~meins
+        INTO CORRESPONDING FIELDS OF TABLE @gt_bom
+        FROM zte2pp0003 AS a
+       INNER JOIN zte2mm0001 AS b ON a~idnrk = b~matnr
+       INNER JOIN zte2pp0002 AS c ON a~stlnr = c~stlnr
+       WHERE c~matnr = @pv_matnr.
+
+      IF sy-subrc <> 0.
+        MESSAGE s000 WITH '자재 공급원 정보가 존재하지 않습니다.' DISPLAY LIKE 'W'.
+        EXIT.
+      ENDIF.
+
+    WHEN OTHERS.
+      REFRESH gt_partner.
+
+      SELECT a~partner, b~company, a~minbm, a~meins, a~netpr, a~waers, a~plifz
+        FROM zte2mm0006 AS a
+       INNER JOIN zte2us0001 AS b
+          ON a~partner = b~partner
+       WHERE matnr = @pv_matnr
+        INTO CORRESPONDING FIELDS OF TABLE @gt_partner.
+
+      IF sy-subrc <> 0.
+        MESSAGE s000 WITH '자재 공급원 정보가 존재하지 않습니다.' DISPLAY LIKE 'W'.
+        EXIT.
+      ENDIF.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form modify_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM modify_screen .
+
+  LOOP AT SCREEN.
+
+    IF gv_mode = 'D'.
+      IF screen-group1 = 'MOD'.
+        screen-input = 0.
+      ELSEIF gv_mode = 'E'.
+        screen-input = 1.
+      ENDIF.
+    ENDIF.
+
+    MODIFY SCREEN.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form expand_tree
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM expand_tree .
+
+  DATA : lv_node_key TYPE tv_nodekey.
+
+  IF gs_search-matnr IS NOT INITIAL.
+
+    " 트리를 펼치기 위한 노드 키 세팅.
+    READ TABLE gt_node_key INTO gs_node_key WITH KEY matnr = gs_search-matnr.
+    lv_node_key = gs_node_key-node_key_2.
+
+  ELSEIF gs_search-matkl IS NOT INITIAL.
+
+    READ TABLE gt_node_key INTO gs_node_key WITH KEY matkl = gs_search-matkl.
+
+    lv_node_key = gs_node_key-node_key_2.
+
+  ELSE.
+    READ TABLE gt_node_key INTO gs_node_key WITH KEY mtart = gs_search-mtart.
+
+    lv_node_key = gs_node_key-node_key_1.
+
+  ENDIF.
+
+  gcl_tree->collapse_all_nodes( ). " 이전에 펼쳐진 모든 트리를 닫음.
+
+  gcl_tree->expand_node(
+    EXPORTING
+      i_node_key       = lv_node_key
+      i_expand_subtree = 'X'
+    EXCEPTIONS
+      failed              = 1
+      illegal_level_count = 2
+      cntl_system_error   = 3
+      node_not_found      = 4
+      cannot_expand_leaf  = 5
+      OTHERS              = 6 ).
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH '트리 펼치기에 실패했습니다.' DISPLAY LIKE 'E'.
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_info_grid
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_info_grid .
+
+  CALL METHOD gcl_grid_mat->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_screen .
+
+*  CLEAR gv_okcode.
+  CLEAR gs_info.
+
+  gcl_tree->collapse_all_nodes( ).
+
+  IF gcl_grid_mat IS NOT INITIAL.
+    CALL METHOD : gcl_grid_mat->free, gcl_container_mat->free.
+    FREE : gcl_grid_mat, gcl_container_mat.
+  ENDIF.
+
+  REFRESH : gt_bom, gt_partner.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_f4_matkl
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_f4_matkl USING  pv_mtart pv_matkl.
+
+  DATA : BEGIN OF ls_matkl,
+           matkl TYPE zte2mm0001-matkl,
+           desc  TYPE zee2_mm_matkl_txt,
+         END OF ls_matkl,
+
+         lt_matkl  LIKE TABLE OF ls_matkl,
+
+         lt_field  TYPE TABLE OF dynpread,
+         ls_field  LIKE LINE OF lt_field,
+         lv_subrc  TYPE sy-subrc,
+
+         lt_domain TYPE TABLE OF dd07v,
+         ls_domain LIKE LINE OF lt_domain,
+
+         lv_flag.
+
+  CLEAR : ls_matkl.
+
+  ls_field-fieldname = pv_mtart.
+
+  APPEND ls_field TO lt_field.
+
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname               = sy-repid  " 현재 프로그램명
+      dynumb               = sy-dynnr  " 현재 화면번호
+    TABLES
+      dynpfields           = lt_field  " 읽어올 필드 목록
+    EXCEPTIONS
+      invalid_abapworkarea = 1
+      invalid_dynprofield  = 2
+      invalid_dynproname   = 3
+      invalid_dynpronummer = 4.
+
+  " 읽어온 화면에서 자재유형 꺼내오기
+  READ TABLE lt_field INTO ls_field WITH KEY fieldname = pv_mtart.
+
+  CALL FUNCTION 'GET_DOMAIN_VALUES'
+    EXPORTING
+      domname    = 'ZDE2_MM_MATKL'
+      text       = 'X'
+    TABLES
+      values_tab = lt_domain.
+
+  " 보여줄 도메인 값만 세팅하기 ..
+  LOOP AT lt_domain INTO ls_domain.
+
+    CLEAR lv_flag.
+
+    CASE ls_field-fieldvalue.
+      WHEN 'FERT'.
+        IF ls_domain-domvalue_l = 'PM'.
+          lv_flag = 'X'.
+        ENDIF.
+
+      WHEN 'VERP'.
+        IF ls_domain-domvalue_l = 'IP'
+        OR ls_domain-domvalue_l = 'OP'
+        OR ls_domain-domvalue_l = 'PP'.
+          lv_flag = 'X'.
+        ENDIF.
+
+      WHEN 'ROH'.
+        IF ls_domain-domvalue_l = 'AG'
+        OR ls_domain-domvalue_l = 'NV'
+        OR ls_domain-domvalue_l = 'SF'
+        OR ls_domain-domvalue_l = 'PR'.
+          lv_flag = 'X'.
+        ENDIF.
+
+      WHEN OTHERS.
+        lv_flag = 'X'. " 비어있으면 전체 ㅇㅇ
+    ENDCASE.
+
+    IF lv_flag = 'X'.
+      ls_matkl-matkl = ls_domain-domvalue_l.
+      ls_matkl-desc  = ls_domain-ddtext.
+
+      APPEND ls_matkl TO lt_matkl.
+      CLEAR  ls_matkl.
+
+    ENDIF.
+
+  ENDLOOP.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'MATKL'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = pv_matkl
+      window_title = '품목 유형'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_matkl.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_f4_maktx
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_f4_matnr USING pv_mtart pv_matkl.
+
+  DATA : lt_field          TYPE TABLE OF dynpread,
+         ls_field          LIKE LINE OF lt_field,
+         lt_return         TYPE TABLE OF ddshretval, " F4 선택 값 반환용
+         ls_return         LIKE LINE OF lt_return,
+         lv_subrc          TYPE sy-subrc,
+         lv_field_name(20),
+
+         lv_read_value     TYPE string, " 화면에서 읽어온 실제 값
+         lv_read_field     TYPE string, " 어떤 필드에서 읽어왔는지 저장
+
+         BEGIN OF ls_data,
+           matnr TYPE zte2mm0001-matnr,
+           maktx TYPE zte2mm0001-maktx,
+         END OF ls_data,
+
+         lt_data LIKE TABLE OF ls_data.
+
+  CLEAR ls_field.
+
+  ls_field-fieldname = 'GS_SEARCH-MATKL'.
+  APPEND ls_field TO lt_field.
+
+  ls_field-fieldname = 'GS_SEARCH-MTART'.
+  APPEND ls_field TO lt_field.
+
+  CALL FUNCTION 'DYNP_VALUES_READ'
+    EXPORTING
+      dyname               = sy-repid  " 현재 프로그램명
+      dynumb               = sy-dynnr  " 현재 화면번호
+    TABLES
+      dynpfields           = lt_field  " 읽어올 필드 목록
+    EXCEPTIONS
+      invalid_abapworkarea = 1
+      invalid_dynprofield  = 2
+      invalid_dynproname   = 3
+      invalid_dynpronummer = 4.
+
+
+*  읽어온 화면에서 해당 자재만 붙이기
+  " MATKL 이 우선순위
+  READ TABLE lt_field INTO ls_field WITH KEY fieldname = 'GS_SEARCH-MATKL'.
+
+  IF ls_field-fieldvalue IS NOT INITIAL.
+    lv_read_value = ls_field-fieldvalue.
+    lv_read_field = 'MATKL'.
+
+  ELSE.
+    " MATKL이 비었으면 MTART를 확인.
+    READ TABLE lt_field INTO ls_field WITH KEY fieldname = 'GS_SEARCH-MTART'.
+
+    IF ls_field-fieldvalue IS NOT INITIAL.
+      lv_read_value = ls_field-fieldvalue.
+      lv_read_field = 'MTART'.
+    ENDIF.
+  ENDIF.
+
+  IF lv_read_field = 'MATKL'.
+    SELECT matnr, maktx
+      FROM zte2mm0001
+      INTO CORRESPONDING FIELDS OF TABLE @lt_data
+     WHERE matkl = @lv_read_value.
+
+  ELSEIF lv_read_field = 'MTART'.
+    SELECT matnr, maktx
+      FROM zte2mm0001
+      INTO CORRESPONDING FIELDS OF TABLE @lt_data
+     WHERE mtart = @lv_read_value.
+
+  ELSE.
+    SELECT matnr, maktx
+      FROM zte2mm0001
+      INTO CORRESPONDING FIELDS OF TABLE @lt_data.
+
+  ENDIF.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'MATNR'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'GS_SEARCH-MATNR'
+      window_title = 'Material Name'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_data.
+
+  CALL FUNCTION 'SAPGUI_SET_FUNCTIONCODE'
+    EXPORTING
+      functioncode = 'ENTR'.
+
+  PERFORM get_maktx.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_maktx
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_maktx .
+
+  IF gs_search-matnr IS INITIAL.
+    CLEAR gs_search-maktx.
+    RETURN.
+  ENDIF.
+
+  SELECT SINGLE maktx
+    INTO gs_search-maktx
+    FROM zte2mm0001
+   WHERE matnr = gs_search-matnr.
+
+  IF sy-subrc = 0.
+    CALL FUNCTION 'SAPGUI_SET_FUNCTIONCODE'
+      EXPORTING
+        functioncode = 'ENTR'.
+  ELSE.
+    CLEAR gs_search-maktx.
+  ENDIF.
+
+  CALL FUNCTION 'SAPGUI_SET_FUNCTIONCODE'
+    EXPORTING
+      functioncode = 'ENTR'.
+
+  IF sy-subrc <> 0.
+    CLEAR gs_search-maktx.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form SET_DOCUMENT
+*&---------------------------------------------------------------------*
+FORM set_document USING pcl_document TYPE REF TO cl_dd_document.
+
+  DATA: lcl_table TYPE REF TO cl_dd_table_element,
+        lcl_col1  TYPE REF TO cl_dd_area,
+        lcl_col2  TYPE REF TO cl_dd_area,
+        lcl_col3  TYPE REF TO cl_dd_area.
+
+*--------------------------------------------------------------------*
+* 테이블 생성
+*--------------------------------------------------------------------*
+  CALL METHOD pcl_document->add_table
+    EXPORTING
+      no_of_columns               = 3
+      border                      = '0'
+      with_heading                = space
+      cell_background_transparent = 'X'
+    IMPORTING
+      table                       = lcl_table.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '25'
+    IMPORTING
+      column = lcl_col1.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '130'
+    IMPORTING
+      column = lcl_col2.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '420'
+    IMPORTING
+      column = lcl_col3.
+
+*--------------------------------------------------------------------*
+* 화면 설명
+*--------------------------------------------------------------------*
+  PERFORM add_help_row USING
+    lcl_table lcl_col1 lcl_col2 lcl_col3
+    'ICON_TREE'
+    '통합 자재 관리:'
+    '모든 자재를 트리 구조로 조회 및 계층 관리'.
+
+  PERFORM add_help_row USING
+    lcl_table lcl_col1 lcl_col2 lcl_col3
+    'ICON_SEARCH'
+    '지능형 검색:'
+    '유형별 품목 자동 필터링, 검색 시 트리 자동 확장'.
+
+  PERFORM add_help_row USING
+    lcl_table lcl_col1 lcl_col2 lcl_col3
+    'ICON_STATUS_BOOKED'
+    '재고 상태 분석:'
+    '현재고/안전재고 비율 기준 상태 표시'.
+
+*--------------------------------------------------------------------*
+* 재고 상태 상세 아이콘
+*--------------------------------------------------------------------*
+  CALL METHOD lcl_col3->add_icon EXPORTING sap_icon = 'ICON_LED_RED'.
+  CALL METHOD lcl_col3->add_text EXPORTING text = ' 위험(90% 미만)  '.
+
+  CALL METHOD lcl_col3->add_icon EXPORTING sap_icon = 'ICON_LED_YELLOW'.
+  CALL METHOD lcl_col3->add_text EXPORTING text = ' 주의(90% ~ 95%)  '.
+
+  CALL METHOD lcl_col3->add_icon EXPORTING sap_icon = 'ICON_LED_GREEN'.
+  CALL METHOD lcl_col3->add_text EXPORTING text = ' 정상(95% ~ 105%)  '.
+
+  CALL METHOD lcl_col3->add_icon EXPORTING sap_icon = 'ICON_LED_RED'.
+  CALL METHOD lcl_col3->add_text EXPORTING text = ' 과잉(105% 초과)'.
+
+  CALL METHOD lcl_table->new_row.
+  CALL METHOD lcl_table->new_row.
+
+  PERFORM add_help_row USING
+    lcl_table lcl_col1 lcl_col2 lcl_col3
+    'ICON_DETAIL'
+    '유형별 상세 정보:'
+    '구매재는 매입처, 완제품은 BOM 정보 제공'.
+
+  PERFORM add_help_row USING
+    lcl_table lcl_col1 lcl_col2 lcl_col3
+    'ICON_CHANGE'
+    '데이터 유지보수:'
+    '조회, 수정, 신규 자재 등록 지원'.
+
+*--------------------------------------------------------------------*
+* 출력
+*--------------------------------------------------------------------*
+  CALL METHOD pcl_document->merge_document.
+
+  CALL METHOD pcl_document->display_document
+    EXPORTING
+      reuse_control = 'X'
+      parent        = gcl_container_doc.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form ADD_HELP_ROW
+*&---------------------------------------------------------------------*
+FORM add_help_row USING
+      pr_table TYPE REF TO cl_dd_table_element
+      pr_col1  TYPE REF TO cl_dd_area
+      pr_col2  TYPE REF TO cl_dd_area
+      pr_col3  TYPE REF TO cl_dd_area
+      pv_icon
+      pv_title
+      pv_desc.
+
+  DATA: lv_text TYPE sdydo_text_element.
+
+  CALL METHOD pr_col1->add_icon
+    EXPORTING
+      sap_icon = pv_icon.
+
+  CALL METHOD pr_col2->add_text
+    EXPORTING
+      text         = pv_title
+      sap_emphasis = cl_dd_area=>strong.
+
+  CALL METHOD pr_col3->add_text
+    EXPORTING
+      text = pv_desc.
+
+  lv_text = cl_abap_char_utilities=>horizontal_tab.
+
+  CALL METHOD pr_col3->new_line.
+
+  CALL METHOD pr_col3->add_text
+    EXPORTING
+      text         = lv_text
+      sap_fontsize = cl_dd_area=>small.
+
+  CALL METHOD pr_table->new_row.
+  CALL METHOD pr_table->new_row.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_new_material
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_new_material .
+
+  CALL SCREEN '0101' STARTING AT 20 3.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_material
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_material .
+
+  DATA : ls_save      TYPE zte2mm0001,
+         ls_timestamp TYPE zse2timestamp.
+
+  SELECT SINGLE matnr " 이미 존재하는 자재코드는 생성 불가
+    FROM zte2mm0001
+   WHERE matnr = @gs_info-matnr
+    INTO @DATA(lv_matnr).
+
+  IF lv_matnr IS INITIAL. " 없으면
+
+    MOVE-CORRESPONDING gs_info TO ls_save.
+
+    CALL FUNCTION 'ZFE2US0002'
+      EXPORTING
+        is_timestamp = ls_timestamp
+      IMPORTING
+        es_timestamp = ls_timestamp.
+
+    MOVE-CORRESPONDING ls_timestamp TO ls_save.
+
+    INSERT zte2mm0001 FROM ls_save.
+
+    IF sy-subrc = 0.
+      COMMIT WORK.
+      MESSAGE s000 WITH '자재(' && gs_info-matnr && ')가 성공적으로 생성되었습니다.'.
+    ELSE.
+      ROLLBACK WORK.
+      MESSAGE s000 WITH '자재 생성에 실패했습니다. (DB 오류)' DISPLAY LIKE 'E'.
+    ENDIF.
+
+    CLEAR gs_info.
+    LEAVE TO SCREEN 0.
+
+
+  ELSE. " 이미 있으면
+    MESSAGE i000 WITH '이미 존재하는 자재입니다.'.
+    CLEAR gs_info.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form validate_search_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM validate_search_data CHANGING pv_flag.
+
+  DATA  : lv_err.
+  CLEAR : lv_err, pv_flag.
+
+  IF gs_search-mtart IS NOT INITIAL AND gs_search-matkl IS NOT INITIAL.
+    CASE gs_search-mtart.
+      WHEN 'FERT'.
+        IF gs_search-matkl <> 'PM'.
+          lv_err = 'X'.
+        ENDIF.
+      WHEN 'VERP'.
+        IF gs_search-matkl <> 'IP' AND gs_search-matkl <> 'OP' AND gs_search-matkl <> 'PP'.
+          lv_err = 'X'.
+        ENDIF.
+      WHEN 'ROH'.
+        IF gs_search-matkl <> 'AG' AND gs_search-matkl <> 'NV' AND
+           gs_search-matkl <> 'SF' AND gs_search-matkl <> 'PR'.
+          lv_err = 'X'.
+        ENDIF.
+    ENDCASE.
+
+    IF lv_err IS NOT INITIAL.
+      MESSAGE s000 WITH '해당 자재유형에 없는 품목분류입니다.' DISPLAY LIKE 'E'.
+      pv_flag = 'X'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  IF gs_search-mtart IS NOT INITIAL AND gs_search-matnr IS NOT INITIAL.
+    SELECT SINGLE matnr
+      FROM zte2mm0001
+     WHERE mtart = @gs_search-mtart
+       AND matnr = @gs_search-matnr
+      INTO @DATA(lv_matnr).
+
+    IF lv_matnr IS INITIAL.
+      MESSAGE s000 WITH '해당 자재유형에 없는 자재입니다.' DISPLAY LIKE 'E'.
+      pv_flag = 'X'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  IF gs_search-matkl IS NOT INITIAL AND gs_search-matnr IS NOT INITIAL.
+    SELECT SINGLE matnr
+      FROM zte2mm0001
+     WHERE mtart = @gs_search-matkl
+       AND matnr = @gs_search-matnr
+      INTO @DATA(lv_matnr2).
+
+    IF lv_matnr2 IS INITIAL.
+      MESSAGE s000 WITH '해당 품목분류에 없는 자재입니다.' DISPLAY LIKE 'E'.
+      pv_flag = 'X'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form valid_fields
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM valid_fields CHANGING pv_flag.
+
+  CLEAR pv_flag.
+
+  TRANSLATE gs_info-mtart TO UPPER CASE.
+  TRANSLATE gs_info-matkl TO UPPER CASE.
+
+  IF gs_info-matnr IS INITIAL.
+    SET CURSOR FIELD 'GS_INFO-MATNR'.
+    MESSAGE s000 WITH '자재코드를 입력하세요' DISPLAY LIKE 'E'.
+    pv_flag = 'X'.
+    RETURN.
+  ENDIF.
+
+  IF gs_info-maktx IS INITIAL.
+    SET CURSOR FIELD 'GS_INFO-MAKTX'.
+    MESSAGE s000 WITH '자재명을 입력하세요' DISPLAY LIKE 'E'.
+    pv_flag = 'X'.
+    RETURN.
+  ENDIF.
+
+  IF gs_info-mtart IS INITIAL.
+    SET CURSOR FIELD 'GS_INFO-MTART'.
+    MESSAGE s000 WITH '자재유형을 입력하세요' DISPLAY LIKE 'E'.
+    pv_flag = 'X'.
+    RETURN.
+  ENDIF.
+
+  IF gs_info-mtart <> 'FERT' AND
+   gs_info-mtart <> 'ROH'  AND
+   gs_info-mtart <> 'VERP'.
+
+    SET CURSOR FIELD 'GS_INFO-MTART'.
+    MESSAGE s000 WITH '자재유형값이 올바르지 않습니다' DISPLAY LIKE 'E'.
+    pv_flag = 'X'.
+    RETURN.
+  ENDIF.
+
+
+  IF gs_info-matkl IS INITIAL.
+    SET CURSOR FIELD 'GS_INFO-MATKL'.
+    MESSAGE s000 WITH '품목분류를 입력하세요' DISPLAY LIKE 'E'.
+    pv_flag = 'X'.
+    RETURN.
+  ENDIF.
+
+  IF gs_info-matkl <> 'SF' AND
+    gs_info-matkl <> 'PR' AND
+    gs_info-matkl <> 'PM' AND
+    gs_info-matkl <> 'OP' AND
+    gs_info-matkl <> 'NV' AND
+    gs_info-matkl <> 'IP' AND
+    gs_info-matkl <> 'AG' AND
+    gs_info-matkl <> 'PP'.
+
+    SET CURSOR FIELD 'GS_INFO-MATKL'.
+    MESSAGE s000 WITH '품목분류 값이 올바르지 않습니다' DISPLAY LIKE 'E'.
+    pv_flag = 'X'.
+    RETURN.
+  ENDIF.
+
+
+  IF gs_info-dislf IS INITIAL.
+    SET CURSOR FIELD 'GS_INFO-DISLF'.
+    MESSAGE s000 WITH '로트크기를 입력하세요' DISPLAY LIKE 'E'.
+    pv_flag = 'X'.
+    RETURN.
+  ENDIF.
+
+  IF gs_info-meins IS INITIAL.
+    SET CURSOR FIELD 'GS_INFO-MEINS'.
+    MESSAGE s000 WITH '단위를 입력하세요' DISPLAY LIKE 'E'.
+    pv_flag = 'X'.
+    RETURN.
+  ENDIF.
+
+  IF gs_info-mhdhb IS INITIAL.
+    SET CURSOR FIELD 'GS_INFO-MHDHB'.
+    MESSAGE s000 WITH '보존기한을 입력하세요' DISPLAY LIKE 'E'.
+    pv_flag = 'X'.
+    RETURN.
+  ENDIF.
+
+  IF gs_info-iprkz IS INITIAL.
+    SET CURSOR FIELD 'GS_INFO-IPRKZ'.
+    MESSAGE s000 WITH '보존기한 단위를 입력하세요' DISPLAY LIKE 'E'.
+    pv_flag = 'X'.
+    RETURN.
+  ENDIF.
+
+  IF gs_info-safstk IS INITIAL.
+    SET CURSOR FIELD 'GS_INFO-SAFSTK'.
+    MESSAGE s000 WITH '안전재고를 입력하세요' DISPLAY LIKE 'E'.
+    pv_flag = 'X'.
+    RETURN.
+  ENDIF.
+
+  IF gs_info-bstme IS INITIAL.
+    SET CURSOR FIELD 'GS_INFO-BSTME'.
+    MESSAGE s000 WITH '안전재고 단위를 입력하세요' DISPLAY LIKE 'E'.
+    pv_flag = 'X'.
+    RETURN.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_info
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_info .
+
+  SELECT SINGLE
+             a~matnr, a~maktx, a~mtart, a~matkl, a~dislf,  a~lvorm,
+             a~meins, a~raube, a~mhdhb, a~iprkz, a~safstk, a~bstme,
+             CASE
+               WHEN b~total_stock IS NULL THEN 0
+               WHEN b~total_stock < 0     THEN 0 " 혹시 마이너스 재고면 0 처리
+               ELSE b~total_stock
+             END AS total_stock,
+             a~meins AS stock_meins,
+             CASE
+               WHEN c~stock_status = '정상' THEN '@5B@'
+               WHEN c~stock_status = '과잉'
+                 OR c~stock_status = '위험'
+                 OR c~stock_status = '확인필요'  THEN '@5C@'
+               WHEN c~stock_status = '주의' THEN '@5D@'
+             ELSE '@5F@'
+             END AS stat_icon,
+             c~stock_status AS stat_txt
+
+        FROM zte2mm0001 AS a
+        LEFT OUTER JOIN zcds_e2_pp_0001 AS b
+          ON a~matnr = b~matnr
+       INNER JOIN zcds_e2_mm_0002 AS c
+          ON a~matnr = c~matnr
+       WHERE a~matnr = @gs_search-matnr
+        INTO CORRESPONDING FIELDS OF @gs_info.
+
+  IF sy-subrc <> 0.
+    EXIT.
+  ENDIF.
+
+  PERFORM get_mat_data USING gs_search-matnr
+                             gs_info-mtart.
+
+  CALL METHOD cl_gui_cfw=>set_new_ok_code
+    EXPORTING
+      new_code = 'GO_PAI'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form update_material
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM update_material .
+
+  DATA: ls_save      TYPE zte2mm0001,
+        ls_timestamp TYPE zse2timestamp.
+
+*  MOVE-CORRESPONDING gs_info TO ls_save.
+*
+*  ls_save-aenam = sy-uname.
+*  ls_save-aedat = sy-datum.
+*  ls_save-aezet = sy-uzeit.
+*
+*  UPDATE zte2mm0001 FROM ls_save.
+
+  UPDATE zte2mm0001
+       SET maktx  = gs_info-maktx
+           mtart  = gs_info-mtart
+           matkl  = gs_info-matkl
+           dislf  = gs_info-dislf
+           meins  = gs_info-meins
+           mhdhb  = gs_info-mhdhb
+           iprkz  = gs_info-iprkz
+           safstk = gs_info-safstk
+           bstme  = gs_info-bstme
+           lvorm  = gs_info-lvorm
+           raube  = gs_info-raube
+           ntgew  = gs_info-ntgew
+           gewei  = gs_info-gewei
+           mwskz  = gs_info-mwskz
+           " --- 수정 정보(타임스탬프) 업데이트 ---
+           aenam  = sy-uname " 수정자
+           aedat  = sy-datum " 수정일
+           aezet  = sy-uzeit " 수정시간
+     WHERE matnr  = gs_info-matnr.
+
+  IF sy-subrc = 0.
+    MESSAGE s000 WITH '수정 완료' DISPLAY LIKE 'S'.
+    gv_mode = 'D'.
+  ELSE.
+    MESSAGE s000 WITH '수정 실패' DISPLAY LIKE 'E'.
+  ENDIF.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

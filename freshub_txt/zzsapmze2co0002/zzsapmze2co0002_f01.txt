@@ -1,0 +1,1726 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZE2CO0002_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form get_materials
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_materials .
+
+  SELECT a~matnr, a~maktx, b~werks, c~name1,
+         d~bdatj, d~poper,
+        CASE
+         WHEN d~matnr IS NULL THEN '@5C@' " 데이터 없으면
+         ELSE '@5B@'                      " 데이터 있으면
+       END AS status
+    FROM zte2mm0001 AS a      " 자재마스터 -> matnr, maktx
+   INNER JOIN zte2pp0008 AS b " 생산품 - 라우팅 - BOM  연결
+      ON a~matnr = b~matnr
+   INNER JOIN zte2mm0002 AS c "플랜터마스터 -> name1
+      ON b~werks = c~werks
+    LEFT OUTER JOIN zte2co0005 AS d " 표준원가 -> 상태
+      ON a~matnr = d~matnr
+     AND d~bdatj = @gs_search-bdatj
+     AND d~poper = @gs_search-poper
+   ORDER BY CASE
+    WHEN d~matnr IS NULL THEN 0
+    ELSE 1
+     END,
+    a~matnr
+  INTO CORRESPONDING FIELDS OF TABLE @gt_matnr.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fcat .
+
+  gs_layout-zebra      = 'X'.
+  gs_layout-cwidth_opt = 'A'.
+  gs_layout-stylefname = 'STYLE'.
+
+  gs_stable-col = 'X'.
+  gs_stable-row = 'X'.
+
+  PERFORM set_material_fcat USING:
+        'X'   'STATUS'    '등록 상태'   ' '    ' ',
+        'X'   'MATNR'     ' '   'ZTE2MM0001'   ' ',
+        ' '   'MAKTX'     ' '   'ZTE2MM0001'   ' ',
+        ' '   'WERKS'     ' '   'ZTE2MM0002'   ' ',
+        ' '   'NAME1'     ' '   'ZTE2MM0002'   ' ',
+        ' '   'BDATJ'     ' '   'ZTE2CO0005'   ' ',
+        ' '   'POPER'     '월'  'ZTE2CO0005'  ' '.
+
+  PERFORM set_tree_fcat USING:
+*           'BUKRS'   ' '         'ZTE2CO0005'  'BUKRS',
+*           'MATNR'   ' '         'ZTE2CO0005'  'MATNR',
+           'MAKTX'   ' '           'ZTE2MM0001'  'MAKTX',
+           'WERKS'   ' '           'ZTE2CO0005'  'WERKS',
+           'BDATJ'   ' '           'ZTE2CO0005'  'BDATJ',
+           'POPER'   '월'          'ZTE2CO0005'  'POPER',
+           'PEINH'   '수량'        'ZTE2CO0005'  'PEINH',
+           'MEINS'   '단위'        'ZTE2CO0005'  'MEINS',
+           'STPRS'   '표준원가'    'ZTE2CO0005'  'STPRS',
+           'DMATL'   '재료비'      'ZTE2CO0005'  'DMATL',
+           'DLABR'   '노무비'      'ZTE2CO0005'  'DLABR',
+           'MOHAD'   '간접비'      'ZTE2CO0005'  'MOHAD',
+           'WAERS'   '통화키'      'ZTE2CO0005'  'WAERS',
+           'VADAT'   '산정일'      'ZTE2CO0005'  'VADAT'.
+
+  PERFORM set_bom_fcat USING :
+        'X'   'MATNR'       ' '           'ZTE2PP0003'    'IDNRK',
+        ' '   'MAKTX'       ' '           'ZTE2MM0001'    ' ',
+        ' '   'BMENG'       '소요량'        'ZTE2PP0003'    'MENGE',
+        ' '   'MEINS'       ' '           'ZTE2PP0003'    ' ',
+        ' '   'DMBTR'       '금액'        'ZTE2CO0005'    'STPRS',
+        ' '   'WAERS'       '통화키'      'ZTE2CO0005'    ' ',
+        ' '   'STK_QTY'     '재고수량'    'ZTE2PP0003'    'MENGE',
+        ' '   'STK_UNIT'    '재고단위'    'ZTE2PP0003'    'MEINS'.
+*        ' '   'PUR_QTY'     '구매 수량'   'ZTE2PP0003'    'MENGE',
+*        ' '   'PUR_UNIT'    ' '           'ZTE2PP0003'    'MEINS',
+*        ' '   'PUR_AMT'     '구매 금액'   'ZTE2CO0005'    'STPRS'.
+*        ' '   'PUR_WAERS'   ' '           'ZTE2CO0005'    'WAERS'.
+
+  PERFORM set_labor_fcat USING :
+        'X'   'VORNR'      ' '        'ZTE2PP0005'    ' ',
+        ' '   'ARBPLTXT'   ' '        'ZTE2PP0001'    'KTEXT',
+        ' '   'OPERTEXT'   ' '        'ZTE2PP0005'    'LTXA1',
+        ' '   'PRICE'      ' '        'ZTE2CO0004'    'TKG00',
+        ' '   'WAERS'      '통화키'   'ZTE2CO0004'    ' ',
+        ' '   'STDTIME'    ' '        'ZTE2PP0005'    'VGW02',
+        ' '   'TIMEUNIT'   '단위'     'ZTE2PP0005'    'VGE02'.
+*        ' '   'BASEQTY'    '단위수량' 'ZTE2PP0005'    'BMSCH',
+*        ' '   'MEINS'      ' '        'ZTE2PP0005'    ' '.
+
+  PERFORM set_indirect_fcat USING :
+        'X'   'REF_BN'     ' '        'ZTE2CO0006'    ' ',
+        ' '   'REF_TXT'    ' '        'ZTE2CO0013'    'TEXT',
+        ' '   'WKG00'      '금액'     'ZTE2CO0006'    ' ',
+        ' '   'WAERS'      ' '        'ZTE2CO0006'    ' '.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_material_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_material_fcat  USING    pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'STATUS'.
+      gs_fcat-icon = 'X'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_mat.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_objects
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM make_objects .
+
+**********************************************************************
+* 좌측 자재 리스트 ALV
+**********************************************************************
+  CREATE OBJECT gcl_container_mat
+    EXPORTING
+      container_name = 'GCL_CONTAINER_MAT'.
+
+  CREATE OBJECT gcl_grid_mat
+    EXPORTING
+      i_parent = gcl_container_mat.
+
+  IF gcl_handler IS INITIAL.
+    CREATE OBJECT gcl_handler.
+  ENDIF.
+
+  SET HANDLER : gcl_handler->handle_toolbar      FOR gcl_grid_mat,
+                gcl_handler->handle_user_command FOR gcl_grid_mat.
+
+  gs_layout-grid_title = '평가 생산품 목록'.
+  gs_layout-smalltitle = 'X'.
+  gs_layout-sel_mode   = 'B'.
+
+  gs_variant-report = sy-repid.
+  gs_variant-handle = 'MAT'.
+
+  CALL METHOD gcl_grid_mat->set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_matnr
+      it_fieldcatalog = gt_fcat_mat.
+
+**********************************************************************
+* 우측 표준원가 조회 ALV TREE
+**********************************************************************
+
+ PERFORM make_tree.
+
+**********************************************************************
+* Split Container 생성
+**********************************************************************
+  CREATE OBJECT gcl_container_split
+    EXPORTING
+      container_name = 'GCL_CONTAINER_SPLIT'.
+
+  CREATE OBJECT gcl_splitter
+    EXPORTING
+      parent  = gcl_container_split
+      rows    = 1
+      columns = 3.
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = gcl_container_bom.
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 1
+      column    = 2
+    RECEIVING
+      container = gcl_container_labor.
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 1
+      column    = 3
+    RECEIVING
+      container = gcl_container_indirect.
+
+  CALL METHOD gcl_splitter->set_column_width
+    EXPORTING
+      id    = 1
+      width = 36.
+
+**********************************************************************
+* 좌측 하단 재료비 ALV (자재소요 + 개당 단가)
+**********************************************************************
+*  CREATE OBJECT gcl_container_bom
+*    EXPORTING
+*      container_name = 'GCL_CONTAINER_BOM'.
+
+  CREATE OBJECT gcl_grid_bom
+    EXPORTING
+      i_parent = gcl_container_bom.
+
+  gs_layout-grid_title = '제품별 원가 구성'.
+  gs_layout-smalltitle = 'X'.
+  gs_layout-no_toolbar = 'X'.
+  gs_layout-sel_mode   = 'D'.
+  gs_variant-handle = 'BOM'.
+
+  CALL METHOD gcl_grid_bom->set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_bom_cost
+      it_fieldcatalog = gt_fcat_bom.
+
+**********************************************************************
+* 가운데 하단 노무비 ALV (라우팅 + 액티비티단가)
+**********************************************************************
+*  CREATE OBJECT gcl_container_labor
+*    EXPORTING
+*      container_name = 'GCL_CONTAINER_LABOR'.
+
+  CREATE OBJECT gcl_grid_labor
+    EXPORTING
+      i_parent = gcl_container_labor.
+
+  gs_layout-grid_title = '공정별 노무비 구성'.
+  gs_layout-smalltitle = 'X'.
+  gs_layout-no_toolbar = 'X'.
+  gs_layout-sel_mode   = 'D'.
+  gs_variant-handle = 'LAB'.
+
+  CALL METHOD gcl_grid_labor->set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_labor_cost
+      it_fieldcatalog = gt_fcat_labor.
+
+**********************************************************************
+* 우측 하단 간접비 ALV
+**********************************************************************
+  CREATE OBJECT gcl_grid_indirect
+    EXPORTING
+      i_parent = gcl_container_indirect.
+
+  gs_layout-grid_title = '간접비 구성'.
+  gs_layout-smalltitle = 'X'.
+  gs_layout-no_toolbar = 'X'.
+  gs_layout-sel_mode   = 'D'.
+  gs_variant-handle = 'IND'.
+
+  CALL METHOD gcl_grid_indirect->set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_indirect_cost
+      it_fieldcatalog = gt_fcat_indirect.
+
+**********************************************************************
+* 상단 표준원가 산정 상태
+**********************************************************************
+  CREATE OBJECT gcl_container_doc
+    EXPORTING
+      container_name = 'GCL_CONTAINER_DOC'.
+
+  CREATE OBJECT gcl_document
+    EXPORTING
+      style            = 'ALV_TO_HTML'
+      background_color = 1
+      no_margins       = space.
+
+  PERFORM set_document USING gcl_document.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_toolbar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_OBJECT
+*&---------------------------------------------------------------------*
+FORM handle_toolbar  USING  pcl_object TYPE REF TO cl_alv_event_toolbar_set.
+
+  gs_alv_toolbar-butn_type = 3.
+  gs_alv_toolbar-icon      = icon_dummy.
+
+  APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+  CLEAR  gs_alv_toolbar.
+
+  gs_alv_toolbar-butn_type = 0.
+  gs_alv_toolbar-function  = 'CREATE_COST_EST'.
+  gs_alv_toolbar-icon      = icon_price_analysis.
+  gs_alv_toolbar-text      = '표준원가 산정'.
+  gs_alv_toolbar-quickinfo = '표준 원가 산정'.
+
+  APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+  CLEAR  gs_alv_toolbar.
+
+  gs_alv_toolbar-butn_type = 0.
+  gs_alv_toolbar-function  = 'DISPLAY_COST_EST'.
+  gs_alv_toolbar-icon      = icon_select_detail.
+  gs_alv_toolbar-text      = '조회'.
+  gs_alv_toolbar-quickinfo = '표준원가 세부내역 조회'.
+
+  APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+  CLEAR  gs_alv_toolbar.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_user_command
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_UCOMM
+*&---------------------------------------------------------------------*
+FORM handle_user_command  USING  pv_ucomm TYPE sy-ucomm.
+
+  CASE pv_ucomm.
+    WHEN 'CREATE_COST_EST'.
+      PERFORM close_check.
+      PERFORM create_cost_est.
+      PERFORM close_module.
+
+    WHEN 'DISPLAY_COST_EST'.
+      PERFORM display_cost_est.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_tree_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*+
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_tree_fcat  USING  pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  gs_fcat-just      = 'L'.
+  gs_fcat-outputlen = 10.
+
+  CASE pv_field.
+    WHEN 'PEINH'.
+      gs_fcat-qfieldname = 'MEINS'.
+
+    WHEN 'DMATL' OR 'DLABR' OR 'MOHAD' OR 'STPRS'.
+      gs_fcat-cfieldname = 'WAERS'.
+
+      " --- 출력 길이 예외 처리 ---
+    WHEN 'POPER'.
+      gs_fcat-outputlen = 5.
+
+    WHEN 'MAKTX'.
+      gs_fcat-outputlen = 20.
+
+    WHEN 'VADAT'.
+      gs_fcat-outputlen = 15.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_tree.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_cost
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_cost .
+
+  CLEAR   gs_cost.
+  REFRESH gt_cost.
+
+  SELECT a~bukrs, a~matnr, a~werks, a~bdatj, a~poper, a~vadat,
+         a~peinh, a~meins, a~dmatl, a~dlabr, a~mohad, a~stprs, a~waers,
+         b~maktx
+    FROM zte2co0005 AS a
+   INNER JOIN zte2mm0001 AS b
+      ON a~matnr = b~matnr
+    INTO CORRESPONDING FIELDS OF TABLE @gt_cost.
+
+  IF sy-subrc <> 0.
+    MESSAGE s000 WITH '해당 년도의 표준원가가 없습니다.' DISPLAY LIKE 'W'.
+    EXIT.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_hierarchy
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM make_hierarchy .
+
+  DATA : lv_first.
+
+  DATA : BEGIN OF ls_year,
+           bdatj TYPE zte2co0005-bdatj,
+         END OF ls_year,
+
+         BEGIN OF ls_month,
+           bdatj TYPE zte2co0005-bdatj,
+           poper TYPE zte2co0005-poper,
+         END OF ls_month,
+
+         lt_year          LIKE TABLE OF ls_year,
+         lt_month         LIKE TABLE OF ls_month,
+
+         lt_data          LIKE TABLE OF gs_cost,
+         ls_empty         LIKE gs_cost,
+
+         lv_level_1       TYPE lvc_nkey,
+         lv_level_2       TYPE lvc_nkey,
+         lv_node_key      TYPE lvc_nkey,
+         lv_tabix         TYPE sy-tabix,
+
+         lv_year_text(6),
+         lv_month_text(5),
+
+* 검색 itab 구성키 위한 변수들
+         lv_key_1         TYPE tv_nodekey,
+         lv_key_2         TYPE tv_nodekey,
+         lv_cnt           TYPE sy-tabix.
+
+  CLEAR   : ls_year, ls_month, lv_first, ls_empty, lv_key_1, lv_key_2, lv_cnt, lv_first.
+  REFRESH : lt_data, lt_year, lt_month.
+
+  APPEND LINES OF gt_cost TO lt_data.
+
+  REFRESH gt_cost.
+
+  SORT lt_data BY bdatj poper matnr.
+
+  lt_year  = CORRESPONDING #( lt_data ).
+  lt_month = CORRESPONDING #( lt_data ).
+
+  SORT : lt_year  BY bdatj,
+         lt_month BY bdatj poper.
+
+  DELETE ADJACENT DUPLICATES FROM : lt_year  COMPARING bdatj,
+                                    lt_month COMPARING bdatj poper.
+
+  MOVE-CORRESPONDING lt_year  TO gt_year.
+  MOVE-CORRESPONDING lt_month TO gt_month.
+
+  LOOP AT lt_year INTO ls_year.
+
+    READ TABLE lt_year INTO ls_year
+         WITH KEY bdatj = ls_year-bdatj
+         BINARY SEARCH.
+
+    IF sy-subrc <> 0.
+      CONTINUE.
+    ENDIF.
+
+    lv_tabix = sy-tabix.
+    lv_cnt  += 1.
+    lv_key_1 = lv_cnt.
+
+    READ TABLE lt_data INTO gs_cost
+         WITH KEY bdatj = ls_year-bdatj
+         BINARY SEARCH.
+
+    IF sy-subrc <> 0.
+      CONTINUE.
+    ENDIF.
+
+    " Level 1 Node
+    lv_year_text = | { gs_cost-bdatj }년 |.
+
+    PERFORM add_node USING ls_empty lv_year_text ' ' lv_level_1.
+
+    LOOP AT lt_month INTO ls_month FROM lv_tabix WHERE bdatj = ls_year-bdatj.
+
+      READ TABLE lt_data INTO gs_cost WITH KEY bdatj = ls_month-bdatj
+                                               poper = ls_month-poper
+                                               BINARY SEARCH.
+
+      IF sy-subrc <> 0.
+        CONTINUE.
+      ENDIF.
+
+      lv_tabix = sy-tabix.
+
+      CLEAR lv_first.
+
+      LOOP AT lt_data INTO gs_cost FROM lv_tabix WHERE bdatj = ls_month-bdatj
+                                                   AND poper = ls_month-poper.
+
+        IF lv_first IS INITIAL.
+
+          lv_month_text = |{ abs( gs_cost-poper ) }월|.
+
+          " Level 2 Node
+          PERFORM add_node USING ls_empty lv_month_text lv_level_1 lv_level_2.
+
+          lv_first = 'X'.
+          lv_cnt  += 1.
+          lv_key_2 = lv_cnt.
+
+        ENDIF.
+
+        " Child Node
+        lv_cnt += 1.
+        PERFORM add_node USING gs_cost gs_cost-matnr lv_level_2 lv_node_key.
+
+        gs_node_key = CORRESPONDING #( gs_cost ).
+        gs_node_key-year = gs_cost-bdatj.
+        gs_node_key = VALUE #( BASE gs_node_key
+                               node_key_1 = lv_key_1
+                               node_key_2 = lv_key_2 ).
+
+        APPEND gs_node_key TO gt_node_key.
+        CLEAR  gs_node_key.
+
+      ENDLOOP.
+
+    ENDLOOP.
+
+  ENDLOOP.
+
+  CALL METHOD gcl_tree->update_calculations.
+  CALL METHOD gcl_tree->frontend_update.
+
+  SORT gt_node_key BY node_key_1 node_key_2.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form add_node
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_COST
+*&      --> GS_COST_MATNR
+*&      --> LV_LEVEL_2
+*&      --> LV_NODE_KEY
+*&---------------------------------------------------------------------*
+FORM add_node  USING   ps_data      LIKE gs_cost
+                       pv_text
+                       pv_relat_key TYPE lvc_nkey
+                       pv_node_key  TYPE lvc_nkey.
+
+  DATA : lv_node_text  TYPE lvc_value.
+
+  lv_node_text  = pv_text.
+
+  CALL METHOD gcl_tree->add_node
+    EXPORTING
+      i_relat_node_key = pv_relat_key
+      i_relationship   = cl_gui_column_tree=>relat_last_child
+      i_node_text      = lv_node_text
+      is_outtab_line   = ps_data
+*     is_node_layout   = ls_node
+*     it_item_layout   = lt_item_layout
+    IMPORTING
+      e_new_node_key   = pv_node_key.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_init
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_init .
+
+  gs_search-bdatj = sy-datum(4).
+  gs_search-poper = sy-datum+4(2).
+  gs_search-werks = '1000'.
+  gs_search-bukrs = '1000'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid_mat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid_mat .
+
+  CALL METHOD gcl_grid_mat->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_bom_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_bom_fcat  USING  pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'BMENG'.
+      gs_fcat-qfieldname = 'MEINS'.
+
+    WHEN 'DMBTR'.
+      gs_fcat-cfieldname = 'WAERS'.
+      gs_fcat-do_sum     = 'X'.
+
+    WHEN 'PUR_QTY'.
+      gs_fcat-qfieldname = 'PUR_UNIT'.
+
+    WHEN 'PUR_AMT'.
+      gs_fcat-cfieldname = 'PUR_WAERS'.
+
+    WHEN 'MAKTX'.
+      gs_fcat-outputlen = 10.
+      gs_fcat-just      = 'L'.
+      CLEAR gs_fcat-col_opt.
+
+    WHEN 'STK_QTY'.
+      gs_fcat-qfieldname = 'STK_UNIT'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_bom.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_cost_est
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_cost_est .
+
+  DATA : lv_cnt     TYPE i,
+         ls_save    TYPE zte2co0005,
+         lv_date(6).
+
+  REFRESH : gt_labor_cost, gt_bom_cost, gt_indirect_cost.
+
+  CALL METHOD gcl_grid_mat->get_selected_rows
+    IMPORTING
+      et_index_rows = gt_row_mat.
+
+  lv_cnt = lines( gt_row_mat ).
+
+  IF lv_cnt < 1.
+    MESSAGE s000 WITH '표준원가를 산정할 생산품을 선택해주세요.' DISPLAY LIKE 'W'.
+    EXIT.
+  ENDIF.
+
+  READ TABLE gt_row_mat INTO gs_row INDEX 1. " 어짜피 한줄만 클릭가능.
+
+  READ TABLE gt_matnr INTO gs_matnr INDEX gs_row-index. " 평가할 생산품 불러오기.
+
+  IF sy-subrc <> 0.
+    EXIT.
+  ENDIF.
+
+  IF gs_matnr-status = '@5B@'.
+    MESSAGE i000 WITH '이미 표준원가가 산정된 자재입니다.' DISPLAY LIKE 'E'.
+    PERFORM refresh.
+    EXIT.
+  ENDIF.
+
+  lv_date =  |{ gs_search-bdatj }{ gs_search-poper+1(2) }|.
+
+  IF lv_date <> sy-datum+0(6).
+    MESSAGE s000 WITH '현재월의 표준원가만 산정할 수 있습니다.' DISPLAY LIKE 'E'.
+    PERFORM refresh.
+    RETURN.
+  ENDIF.
+
+  PERFORM get_bom_cost USING gs_matnr-matnr.
+  PERFORM refresh_grid_bom.
+  PERFORM get_labor_cost USING gs_matnr-matnr.
+  PERFORM refresh_grid_labor.
+  PERFORM get_indirect_cost USING gs_matnr-matnr.
+  PERFORM refresh_grid_indirect.
+
+  PERFORM set_cost_info USING gs_matnr.
+
+  ls_save = VALUE #(
+                      bukrs = gs_search-bukrs
+                      matnr = gs_matnr-matnr
+                      werks = gs_search-werks
+                      bdatj = gs_search-bdatj
+                      poper = gs_search-poper
+                      peinh = gs_cost_detail-peinh
+                      meins = gs_cost_detail-meins
+                      dmatl = gs_cost_detail-dmatl
+                      dlabr = gs_cost_detail-dlabr
+                      mohad = gs_cost_detail-mohad
+                      stprs = gs_cost_detail-stprs
+                      waers = gs_cost_detail-waers
+                      vadat = gs_cost_detail-vadat
+                      ernam = sy-uname
+                      erdat = sy-datum
+                      erzet = sy-uzeit
+                   ).
+
+  INSERT zte2co0005 FROM ls_save.
+
+  IF sy-dbcnt > 0.
+    MESSAGE s000 WITH | { gs_search-bdatj }년 { gs_search-poper+1(2) }월 { gs_matnr-matnr }의 표준원가가 산정되었습니다. |.
+    PERFORM get_materials.
+    PERFORM refresh_grid_mat.
+
+    CALL METHOD gcl_tree->delete_all_nodes.
+    CALL METHOD gcl_tree->frontend_update.
+
+    gv_year  = gs_search-bdatj.
+    gv_poper = gs_search-poper.
+
+    REFRESH gt_node_key.
+
+    IF gcl_tree IS NOT INITIAL.
+      CALL METHOD : gcl_tree->free, gcl_container_tree->free.
+      FREE : gcl_tree, gcl_container_tree.
+    ENDIF.
+
+    PERFORM get_cost.
+    PERFORM make_tree.
+    PERFORM expand_tree.
+
+    COMMIT WORK AND WAIT.
+  ELSE.
+    MESSAGE s000 WITH | 표준원가 산정에 실패했습니다. |.
+    ROLLBACK WORK.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_bom_cost
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_bom_cost USING pv_matnr TYPE zte2mm0001-matnr.
+
+  DATA : lv_spmon TYPE zte2mm0021-spmon.
+  REFRESH gt_bom_cost.
+
+  lv_spmon = |{ gs_search-bdatj }{ gs_search-poper+1(2) }|.
+
+  SELECT matnr, maktx, mtart, bmeng, meins, dislf, ntgew, stprs, waers, dmbtr_raw, meins_u
+    FROM zcds_e2_co_0001( p_matnr = @pv_matnr,
+                          p_spmon = @lv_spmon )
+    INTO CORRESPONDING FIELDS OF TABLE @gt_bom_cost
+   ORDER BY matnr.
+
+  IF sy-subrc <> 0.
+    MESSAGE s000 WITH '재료비 산정 오류' DISPLAY LIKE 'E'.
+  ENDIF.
+
+  PERFORM calc_1ea.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid_bom
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid_bom .
+
+  CALL METHOD gcl_grid_bom->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_labor_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_labor_fcat  USING    pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'STDTIME'.
+      gs_fcat-qfieldname = 'TIMEUNIT'.
+
+    WHEN 'PRICE'.
+      gs_fcat-cfieldname = 'WAERS'.
+      gs_fcat-do_sum     = 'X'.
+
+    WHEN 'BASEQTY'.
+      gs_fcat-qfieldname = 'MEINS'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_labor.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_labor_cost
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_MATNR_MATNR
+*&---------------------------------------------------------------------*
+FORM get_labor_cost  USING  pv_matnr TYPE zte2mm0001-matnr.
+
+  DATA : lv_tabix TYPE sy-tabix,
+         lv_price LIKE gs_labor_cost-price.
+
+  REFRESH gt_labor_cost.
+
+  SELECT vornr, arbpl, arbpltxt, opertext, stdtime, timeunit, baseqty, meins,
+         lstar1, lstar2, lstar3, price1, price2, price3, waers
+    FROM zcds_e2_co_0002( p_matnr = @pv_matnr,
+                          p_gjahr = @gs_search-bdatj,
+                          p_perio = @gs_search-poper
+                         )
+    INTO CORRESPONDING FIELDS OF TABLE @gt_labor_cost
+   ORDER BY vornr.
+
+  IF sy-subrc <> 0.
+    MESSAGE s000 WITH '노무비 불러오기 오류' DISPLAY LIKE 'E'.
+  ENDIF.
+
+  LOOP AT gt_labor_cost INTO gs_labor_cost.
+
+    lv_tabix = sy-tabix.
+
+    IF gs_labor_cost-lstar1 = 'LABR'.
+      lv_price = gs_labor_cost-price1.
+    ENDIF.
+
+    IF gs_labor_cost-lstar2 = 'LABR'.
+      lv_price = gs_labor_cost-price2.
+    ENDIF.
+
+    IF gs_labor_cost-lstar3 = 'LABR'.
+      lv_price = gs_labor_cost-price3.
+    ENDIF.
+
+    " gs_labor_cost-stdtime " 시간 min  : 60 Min =  price : lv_price
+    " --> 60 * price  = lv_price * stdtime
+    " --> price = lv_price * stdtime / 60 -> 100개당 가격
+    lv_price = ( ( lv_price * gs_labor_cost-stdtime ) / 60 ) / 100.
+
+    gs_labor_cost-price = lv_price.
+
+    MODIFY gt_labor_cost FROM gs_labor_cost INDEX lv_tabix
+    TRANSPORTING price.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid_labor
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid_labor .
+
+  CALL METHOD gcl_grid_labor->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form calc_1ea
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM calc_1ea .
+
+  DATA : lv_tabix TYPE sy-tabix.
+
+  LOOP AT gt_bom_cost INTO gs_bom_cost.
+
+    lv_tabix = sy-tabix.
+
+    CASE gs_bom_cost-mtart.
+      WHEN 'ROH'.
+        gs_bom_cost-dmbtr = gs_bom_cost-dmbtr_raw / gs_bom_cost-ntgew.
+        gs_bom_cost-stk_qty = gs_bom_cost-bmeng / gs_bom_cost-ntgew.
+
+      WHEN 'VERP'.
+        gs_bom_cost-dmbtr = gs_bom_cost-dmbtr_raw.
+        gs_bom_cost-stk_qty = gs_bom_cost-dislf.
+    ENDCASE.
+
+    gs_bom_cost-stk_unit = gs_bom_cost-meins_u.
+
+    MODIFY gt_bom_cost FROM gs_bom_cost INDEX lv_tabix
+    TRANSPORTING dmbtr stk_qty stk_unit.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_gv_year
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_gv_year .
+
+  DATA : lt_year          TYPE vrm_values,
+         ls_year          LIKE LINE OF lt_year,
+
+         lv_start_year(4),
+         lv_curr_year(4).
+
+  lv_start_year = '2021'.
+  lv_curr_year = sy-datum(4).
+
+  WHILE lv_start_year <= lv_curr_year.
+
+    ls_year-key = lv_start_year.
+    ls_year-text = |{ lv_start_year } 년|.
+
+    APPEND ls_year TO lt_year.
+    CLEAR  ls_year.
+
+    lv_start_year = lv_start_year + 1.
+
+  ENDWHILE.
+
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id     = 'GV_YEAR'
+      values = lt_year.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_gv_poper
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_gv_poper .
+
+  DATA : lt_poper TYPE vrm_values,
+         ls_poper LIKE LINE OF lt_poper.
+
+  DATA : lv_start_month   TYPE zte2co0005-poper,
+         lv_end_month     TYPE zte2co0005-poper,
+         lv_this_year(4),
+         lv_this_month(2).
+
+  lv_this_year  = sy-datum(4).   " 올해
+  lv_this_month = sy-datum+4(2). " 이번 달
+
+  CASE gv_year.
+    WHEN '2021'. " 2021년 7월부터의 표준원가만 존재
+      lv_start_month = 7.
+      lv_end_month   = 12.
+
+    WHEN lv_this_year. " 올해일경우 --> 이번달의 표준원가 조회가 한계임
+      lv_start_month = 1.
+      lv_end_month   = lv_this_month.
+
+    WHEN OTHERS.
+      lv_start_month = 1.
+      lv_end_month   = 12.
+
+  ENDCASE.
+
+  WHILE lv_start_month <= lv_end_month.
+    ls_poper-key  = lv_start_month.
+    ls_poper-text = | { lv_start_month + 0 } 월 |.
+
+    APPEND ls_poper TO lt_poper.
+    CLEAR  ls_poper.
+
+    lv_start_month = lv_start_month + 1.
+
+  ENDWHILE.
+
+  READ TABLE lt_poper WITH KEY key = gv_poper TRANSPORTING NO FIELDS.
+
+  IF sy-subrc <> 0.
+    CLEAR gv_poper.
+*    gcl_tree->collapse_all_nodes( ).
+    PERFORM expand_tree.
+  ENDIF.
+
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id     = 'GV_POPER'
+      values = lt_poper.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form expand_tree
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> LV_CHECK
+*&---------------------------------------------------------------------*
+FORM expand_tree.
+
+  DATA : lv_node_key TYPE tv_nodekey,
+         lv_sel_key  TYPE lvc_nkey,
+         lv_check.
+
+  CLEAR : lv_node_key, lv_sel_key, lv_check.
+
+  IF gv_poper IS NOT INITIAL.
+
+    READ TABLE gt_month INTO gs_month WITH KEY bdatj = gv_year
+                                               poper = gv_poper.
+    IF sy-subrc = 0 .
+      READ TABLE gt_node_key INTO gs_node_key WITH KEY year = gv_year
+                                                       poper = gv_poper.
+
+      lv_node_key = gs_node_key-node_key_2.
+      lv_check = 'X'.
+
+    ELSE.
+      CLEAR gv_poper.
+      READ TABLE gt_node_key INTO gs_node_key WITH KEY year = gv_year.
+      lv_node_key = gs_node_key-node_key_1.
+
+      CLEAR lv_check.
+
+    ENDIF.
+
+  ELSE.
+
+    READ TABLE gt_node_key INTO gs_node_key WITH KEY year =  gv_year.
+
+    lv_node_key = gs_node_key-node_key_1.
+    CLEAR lv_check.
+
+  ENDIF.
+
+  gcl_tree->collapse_all_nodes( ).
+
+  gcl_tree->expand_node(
+    EXPORTING
+      i_node_key          = lv_node_key
+      i_expand_subtree    = lv_check
+    EXCEPTIONS
+      failed              = 1
+      illegal_level_count = 2
+      cntl_system_error   = 3
+      node_not_found      = 4
+      cannot_expand_leaf  = 5
+      OTHERS              = 6 ).
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH '표준원가 조회에 실패했습니다.' DISPLAY LIKE 'E'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_cost_info
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_cost_info USING ps_matnr LIKE gs_matnr.
+
+  DATA : sum_dmatl TYPE p DECIMALS 2,
+         sum_dlabr TYPE p DECIMALS 2,
+         sum_mohad TYPE p DECIMALS 2.
+
+  CLEAR: sum_dmatl, sum_dlabr, sum_mohad, gs_cost_detail.
+
+  LOOP AT gt_bom_cost INTO gs_bom_cost.
+
+    sum_dmatl += gs_bom_cost-dmbtr.
+
+  ENDLOOP.
+
+  LOOP AT gt_labor_cost INTO gs_labor_cost.
+
+    sum_dlabr += gs_labor_cost-price.
+
+  ENDLOOP.
+
+  LOOP AT gt_indirect_cost INTO gs_indirect_cost.
+
+    sum_mohad += gs_indirect_cost-wkg00.
+
+  ENDLOOP.
+
+
+  gs_cost_detail = VALUE #(
+*                           BASE gs_cost_detail
+                            matnr = gs_matnr-matnr
+                            maktx = gs_matnr-maktx
+                            bdatj = gs_search-bdatj
+                            poper = gs_search-poper
+                            peinh = '1'
+                            meins = 'EA'
+                            dmatl = sum_dmatl
+                            dlabr = sum_dlabr
+                            mohad = sum_mohad
+                            stprs = sum_dmatl + sum_dlabr + sum_mohad
+                            vadat = sy-datum
+                            waers = gs_bom_cost-waers ).
+
+  CALL METHOD cl_gui_cfw=>set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_document
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GCL_DOCUMENT
+*&---------------------------------------------------------------------*
+FORM set_document  USING  pcl_document TYPE REF TO cl_dd_document.
+
+  DATA: lcl_table       TYPE REF TO cl_dd_table_element,
+        lcl_col1        TYPE REF TO cl_dd_area,
+        lcl_col2        TYPE REF TO cl_dd_area,
+        lcl_col3        TYPE REF TO cl_dd_area,
+        lcl_col4        TYPE REF TO cl_dd_area,
+
+        lv_calc_cnt     TYPE i,
+        lv_not_calc_cnt TYPE i,
+
+        lv_text         TYPE sdydo_text_element.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text         = '표준원가 산정 상태'
+      sap_fontsize = cl_dd_document=>large
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background_inv.
+
+  CALL METHOD pcl_document->new_line.
+  CALL METHOD pcl_document->new_line.
+
+* 테이블 생성
+  CALL METHOD pcl_document->add_table
+    EXPORTING
+      no_of_columns               = 4
+      border                      = '0'
+      with_heading                = space
+      cell_background_transparent = 'X'
+    IMPORTING
+      table                       = lcl_table.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '25'
+    IMPORTING
+      column = lcl_col1.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '150'
+    IMPORTING
+      column = lcl_col2.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '10'
+    IMPORTING
+      column = lcl_col3.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '15'
+    IMPORTING
+      column = lcl_col4.
+
+**********************************************************************
+* Status 개수 세기
+**********************************************************************
+  CLEAR : lv_calc_cnt, lv_not_calc_cnt.
+
+  LOOP AT gt_matnr INTO gs_matnr.
+
+    CASE gs_matnr-status.
+      WHEN '@5B@'. " 산정
+        lv_calc_cnt += 1.
+      WHEN '@5C@'. " 미산정
+        lv_not_calc_cnt += 1.
+    ENDCASE.
+
+  ENDLOOP.
+
+**********************************************************************
+* 화면 설명
+**********************************************************************
+
+  CALL METHOD lcl_table->new_row.
+
+  CALL METHOD lcl_col1->add_icon
+    EXPORTING
+      sap_icon = 'ICON_LED_GREEN'.
+
+  lv_text = '표준원가 산정 완료 :'.
+  CALL METHOD lcl_col2->add_text
+    EXPORTING
+      text = lv_text.
+*      sap_emphasis = cl_dd_area=>strong.
+
+  lv_text = lv_calc_cnt.
+  CALL METHOD lcl_col3->add_text
+    EXPORTING
+      text = lv_text.
+*      sap_emphasis = cl_dd_area=>strong.
+
+  lv_text = '건'.
+  CALL METHOD lcl_col4->add_text
+    EXPORTING
+      text = lv_text.
+*      sap_emphasis = cl_dd_area=>strong.
+
+  CALL METHOD lcl_table->new_row.
+
+  CALL METHOD lcl_col1->add_icon
+    EXPORTING
+      sap_icon = 'ICON_LED_RED'.
+
+  lv_text = '표준원가 미산정 :'.
+  CALL METHOD lcl_col2->add_text
+    EXPORTING
+      text = lv_text.
+*      sap_emphasis = cl_dd_area=>strong.
+
+  lv_text = lv_not_calc_cnt.
+  CALL METHOD lcl_col3->add_text
+    EXPORTING
+      text = lv_text.
+*      sap_emphasis = cl_dd_area=>strong.
+
+  lv_text = '건'.
+  CALL METHOD lcl_col4->add_text
+    EXPORTING
+      text = lv_text.
+*      sap_emphasis = cl_dd_area=>strong.
+
+  CALL METHOD pcl_document->merge_document.
+
+  CALL METHOD pcl_document->display_document
+    EXPORTING
+      reuse_control = 'X'
+      parent        = gcl_container_doc.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_indirect_cost
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_MATNR_MATNR
+*&---------------------------------------------------------------------*
+FORM get_indirect_cost  USING  pv_matnr TYPE zte2mm0001-matnr.
+
+  DATA: lv_last_day   TYPE sy-datum,
+        lv_day_in     TYPE sy-datum, " 이번달 며칠인지
+        lv_days       TYPE i,
+        lv_1hour_quan TYPE zte2co0006-wkg00, " 1시간(60분)당 간접비 얼마인지
+        lv_mach       TYPE zte2co0005-stprs,
+        lv_prod       TYPE zte2co0005-stprs,
+        lv_watr       TYPE zte2co0005-stprs,
+        lv_elec       TYPE zte2co0005-stprs,
+        lv_ict        TYPE zte2co0005-stprs,
+
+        lv_beg_sec    TYPE i,
+        lv_end_sec    TYPE i,
+        lv_work_sec   TYPE i,
+        lv_work_hour  TYPE p DECIMALS 2,
+
+        lt_cycle      LIKE TABLE OF gs_indirect_cost.
+
+  CLEAR : lv_last_day, lv_day_in, lv_days, lv_1hour_quan, lv_mach, lv_prod, lv_watr, lv_elec.
+
+  SELECT arbpl, begzt, endzt, kostl, plnnr, vornr, vgw02, vge02, bmsch,
+         meins_quan, belnr, buzei, gjahr, perio, wkg00, waers, ref_bn
+  FROM zcds_e2_co_0006( p_matnr = @pv_matnr,
+                          p_gjahr = @gs_search-bdatj,
+                          p_perio = @gs_search-poper
+                         )
+    INTO CORRESPONDING FIELDS OF TABLE @gt_ind_tmp
+   ORDER BY kostl, vornr.
+
+  IF sy-subrc <> 0.
+    MESSAGE s000 WITH '간접비 불러오기 오류'.
+  ENDIF.
+
+**********************************************************************
+* 간접비 종류 별 가격 측정
+**********************************************************************
+  lv_day_in = |{ gs_search-bdatj }{ gs_search-poper+1(2) }01|.
+
+  CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+    EXPORTING
+      day_in            = lv_day_in
+    IMPORTING
+      last_day_of_month = lv_last_day.
+
+  lv_days = lv_last_day+6(2).
+
+  LOOP AT gt_ind_tmp INTO gs_ind_tmp.
+
+    " 가동 시간 계산
+    lv_beg_sec =
+    gs_ind_tmp-begzt+0(2) * 3600
+  + gs_ind_tmp-begzt+2(2) * 60
+  + gs_ind_tmp-begzt+4(2).
+
+    lv_end_sec =
+        gs_ind_tmp-endzt+0(2) * 3600
+      + gs_ind_tmp-endzt+2(2) * 60
+      + gs_ind_tmp-endzt+4(2).
+
+    lv_work_sec = lv_end_sec - lv_beg_sec.
+
+    lv_work_hour = lv_work_sec / 3600.
+
+    " 한달 총 간접비 / ( 가동 종료시간 - 시작시간 * 한달일수 ) => 시간당 간접비
+    lv_1hour_quan = gs_ind_tmp-wkg00 / ( lv_work_hour * lv_days ).
+
+    CASE gs_ind_tmp-ref_bn.
+
+      WHEN '26_A_MACH'.
+        "  ( 시간당 간접비 / 60 -> 분당 간접비 ) * 해당 공정 분수 / 개수
+        lv_mach += ( ( gs_ind_tmp-vgw02 * lv_1hour_quan / 60 ) / gs_ind_tmp-bmsch ).
+
+      WHEN '26_D_PROD'.
+        lv_prod += ( ( gs_ind_tmp-vgw02 * lv_1hour_quan / 60 ) / gs_ind_tmp-bmsch ).
+
+      WHEN '26_A_WATR'.
+        lv_watr += ( ( gs_ind_tmp-vgw02 * lv_1hour_quan / 60 ) / gs_ind_tmp-bmsch ).
+
+      WHEN '26_A_ELEC'.
+        lv_elec += ( ( gs_ind_tmp-vgw02 * lv_1hour_quan / 60 ) / gs_ind_tmp-bmsch ).
+
+      WHEN '26_D_ICT'.
+        lv_ict += ( ( gs_ind_tmp-vgw02 * lv_1hour_quan / 60 ) / gs_ind_tmp-bmsch ).
+
+    ENDCASE.
+
+  ENDLOOP.
+
+**********************************************************************
+* 화면에 간접비 추가
+**********************************************************************
+
+  lt_cycle = VALUE #(
+    ( ref_bn = '26_A_MACH' wkg00 = lv_mach )
+    ( ref_bn = '26_A_ELEC' wkg00 = lv_elec )
+    ( ref_bn = '26_A_WATR' wkg00 = lv_watr )
+    ( ref_bn = '26_D_PROD' wkg00 = lv_prod )
+    ( ref_bn = '26_D_ICT'  wkg00 = lv_ict  )
+  ).
+
+  LOOP AT lt_cycle INTO DATA(ls_cycle).
+
+    gs_indirect_cost-ref_bn = ls_cycle-ref_bn.
+
+    SELECT SINGLE text
+      FROM zte2co0013
+     WHERE cycle = @ls_cycle-ref_bn
+      INTO @gs_indirect_cost-ref_txt.
+
+    gs_indirect_cost-wkg00 = ls_cycle-wkg00.
+    gs_indirect_cost-waers = gs_ind_tmp-waers.
+
+    APPEND gs_indirect_cost TO gt_indirect_cost.
+    CLEAR gs_indirect_cost.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_indirect_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_indirect_fcat  USING   pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'WKG00'.
+      gs_fcat-cfieldname = 'WAERS'.
+      gs_fcat-do_sum     = 'X'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_indirect.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid_indirect
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid_indirect .
+
+  CALL METHOD gcl_grid_indirect->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_doc
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_doc .
+
+  CALL METHOD gcl_document->initialize_document.
+
+  PERFORM set_document USING gcl_document.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh .
+
+  PERFORM get_materials.
+  PERFORM refresh_grid_mat.
+  REFRESH : gt_bom_cost, gt_labor_cost, gt_indirect_cost.
+  PERFORM refresh_grid_bom.
+  PERFORM refresh_grid_labor.
+  PERFORM refresh_grid_indirect.
+  CLEAR   gs_cost_detail.
+  CALL METHOD cl_gui_cfw=>set_new_ok_code
+    EXPORTING
+      new_code = 'ENTER'.
+  PERFORM refresh_doc.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_cost_est
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_cost_est .
+
+  DATA : lv_cnt  TYPE i,
+         ls_save TYPE zte2co0005,
+         lv_date TYPE sy-datum.
+
+  REFRESH : gt_labor_cost, gt_bom_cost, gt_indirect_cost.
+
+  CALL METHOD gcl_grid_mat->get_selected_rows
+    IMPORTING
+      et_index_rows = gt_row_mat.
+
+  lv_cnt = lines( gt_row_mat ).
+
+  IF lv_cnt < 1.
+    MESSAGE s000 WITH '표준원가 상세를 미리보기할 생산품을 선택해주세요.'.
+    EXIT.
+  ENDIF.
+
+  READ TABLE gt_row_mat INTO gs_row INDEX 1. " 어짜피 한줄만 클릭가능.
+
+  READ TABLE gt_matnr INTO gs_matnr INDEX gs_row-index. " 평가할 생산품 불러오기.
+
+  IF sy-subrc <> 0.
+    EXIT.
+  ENDIF.
+
+  lv_date =  |{ gs_search-bdatj }{ gs_search-poper+1(2) }|.
+
+  IF lv_date <> sy-datum+0(6).
+    MESSAGE s000 WITH '현재월의 표준원가만 미리보기할 수 있습니다.' DISPLAY LIKE 'E'.
+    PERFORM refresh.
+    RETURN.
+
+  ENDIF.
+
+  PERFORM get_bom_cost USING gs_matnr-matnr.
+  PERFORM refresh_grid_bom.
+  PERFORM get_labor_cost USING gs_matnr-matnr.
+  PERFORM refresh_grid_labor.
+  PERFORM get_indirect_cost USING gs_matnr-matnr.
+  PERFORM refresh_grid_indirect.
+
+  PERFORM set_cost_info USING gs_matnr.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form close_check
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM close_check .
+
+  " 1. 결산 통제: 실행 가능 여부 체크
+  DATA: lv_check TYPE char1.
+
+  " 0018 테이블을 뒤져서 본인의 스텝 번호를 자동으로 찾아서 검사
+  lv_check = zcl_e2_co_close=>close_check(
+    iv_kokrs = '1000'
+    iv_gjahr = sy-datum(4)
+    iv_monat = sy-datum+4(2)
+    iv_step  = '085'
+  ).
+  " 에러가 발생해서 막혔다면, (클래스 안에서 에러 메시지를 띄우므로) 바로 종료
+  IF lv_check = 'C'.
+    RETURN.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form close_module
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM close_module .
+
+  DATA : lv_success(1).
+
+  " (전표 생성이 성공했다는 조건문 안쪽 등)
+  IF lv_success = abap_true.
+
+    " 2. 결산 통제: 진도표(0010) 완료(C) 업데이트
+    zcl_e2_co_close=>close_module(
+      EXPORTING
+        iv_kokrs   = '1000'
+        iv_gjahr   = sy-datum(4)
+        iv_monat   = sy-datum+4(2)
+        iv_step    = '085'       " <--- 0018 마스터에 등록된 해당 프로그램의 스텝 번호를 하드코딩
+        iv_module  = 'CO'        " 해당 프로그램의 담당 모듈 (FI/CO/HR 등)
+        iv_prog_id = sy-cprog    " 현재 프로그램명
+        iv_status  = 'C'         " 완료
+    ).
+
+    COMMIT WORK.
+    MESSAGE '정상적으로 처리되었으며 결산 진도표가 업데이트 되었습니다.' TYPE 'S'.
+
+  ENDIF.
+
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_tree
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM make_tree .
+
+   DATA l_hirarchy_header TYPE treev_hhdr.
+
+  l_hirarchy_header-heading   = '자재별 표준원가'.
+  l_hirarchy_header-width     = '25'.
+  l_hirarchy_header-width_pix = 'X'.
+
+  CREATE OBJECT gcl_container_tree
+    EXPORTING
+      container_name = 'GCL_CONTAINER_TREE'.
+
+  CREATE OBJECT gcl_tree
+    EXPORTING
+      parent              = gcl_container_tree
+      node_selection_mode = cl_gui_column_tree=>node_sel_mode_multiple
+      item_selection      = 'X'
+      no_html_header      = 'X'
+      no_toolbar          = space.
+
+  CALL METHOD gcl_tree->column_optimize
+    EXPORTING
+*     i_start_column = gcl_tree->c_hierarchy_column_name
+      i_end_column = gcl_tree->c_hierarchy_column_name.
+
+  gs_variant-handle = 'COS'.
+
+  CALL METHOD gcl_tree->set_table_for_first_display
+    EXPORTING
+      i_save              = 'A'
+      is_variant          = gs_variant
+      is_hierarchy_header = l_hirarchy_header
+    CHANGING
+      it_outtab           = gt_cost
+      it_fieldcatalog     = gt_fcat_tree.
+
+  PERFORM get_cost.
+  PERFORM make_hierarchy.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

@@ -1,0 +1,20 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZLKW_CALENDAR_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0100 INPUT.
+
+  CALL METHOD : gcl_calendar_t->free,  gcl_calendar_b->free,
+                gcl_container_t->free, gcl_container_b->free,
+                gcl_splitter->free,    gcl_container->free.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

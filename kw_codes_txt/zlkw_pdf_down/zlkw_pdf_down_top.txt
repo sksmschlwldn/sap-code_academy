@@ -1,0 +1,57 @@
+*&---------------------------------------------------------------------*
+*& Include ZLKW_PDF_DOWN_TOP                        - Report ZLKW_PDF_DOWN
+*&---------------------------------------------------------------------*
+REPORT zlkw_pdf_down MESSAGE-ID oo.
+
+DATA : gs_data   TYPE sflight,
+       gt_data   LIKE TABLE OF gs_data,
+       gv_okcode TYPE sy-ucomm.
+
+DATA : gv_tot_page   TYPE sy-pagno,              " Total page
+       gv_percent(3) TYPE n,                     " Reading percent
+       gv_file       TYPE rlgrap-filename .        " FILE NAME
+
+DATA : gs_excel        TYPE ole2_object,
+       gs_workbook     TYPE ole2_object,
+       gs_books        TYPE ole2_object,
+       gs_book         TYPE ole2_object,
+       gs_sheets       TYPE ole2_object,
+       gs_sheet        TYPE ole2_object,
+       gs_activesheet  TYPE ole2_object,
+       gs_application  TYPE ole2_object,
+       gs_pagesetup    TYPE ole2_object,
+       gs_cells        TYPE ole2_object,
+       gs_entirecolumn TYPE ole2_object,
+       gs_cell         TYPE ole2_object,
+       gs_row_e        TYPE ole2_object,
+       gs_buffer       TYPE ole2_object,
+       gs_font         TYPE ole2_object,
+       gs_range        TYPE ole2_object,
+       gs_borders      TYPE ole2_object.
+
+DATA : gs_cell1 TYPE ole2_object,
+       gs_cell2 TYPE ole2_object.
+
+*-- For file path
+DATA : gcl_objfile          TYPE REF TO cl_gui_frontend_services,
+       gv_pickedfolder      TYPE string,
+       gv_initialfolder     TYPE string,
+       gv_fullinfo          TYPE string,
+       gv_temp_filename     TYPE rlgrap-filename,
+       gv_temp_filename_pdf TYPE rlgrap-filename,
+       gv_form(40),
+       gv_pfolder           TYPE rlgrap-filename,
+       gv_filename          TYPE rlgrap-filename,
+       gv_filename_pdf      TYPE rlgrap-filename.
+
+* ALV 관련
+DATA : gcl_container TYPE REF TO cl_gui_docking_container,
+       gcl_grid      TYPE REF TO cl_gui_alv_grid,
+       gs_fcat       TYPE lvc_s_fcat,
+       gt_fcat       TYPE lvc_t_fcat,
+       gs_layout     TYPE lvc_s_layo,
+       gs_stable     TYPE lvc_s_stbl,
+       gs_variant    TYPE disvariant.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

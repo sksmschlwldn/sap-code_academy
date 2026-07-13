@@ -1,0 +1,15 @@
+*&---------------------------------------------------------------------*
+*& Include ZLKW_SMW0_HTML_TOP                   - Module Pool      ZLKW_SMW0_HTML
+*&---------------------------------------------------------------------*
+PROGRAM zlkw_smw0_html MESSAGE-ID oo.
+
+CLASS lcl_event_handler DEFINITION DEFERRED.
+
+DATA : gcl_container TYPE REF TO cl_gui_custom_container,
+       gcl_html      TYPE REF TO cl_gui_html_viewer,
+       gcl_handler   TYPE REF TO lcl_event_handler,
+
+       gv_okcode     TYPE sy-ucomm.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

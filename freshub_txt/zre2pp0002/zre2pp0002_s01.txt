@@ -1,0 +1,29 @@
+*&---------------------------------------------------------------------*
+*& Include          ZRE2PP0002_S01
+*&---------------------------------------------------------------------*
+
+SELECTION-SCREEN BEGIN OF BLOCK bl1 WITH FRAME TITLE TEXT-t01.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+
+    PARAMETERS : pa_modi RADIOBUTTON GROUP rb1 DEFAULT 'X' USER-COMMAND mode.
+    SELECTION-SCREEN COMMENT (28) TEXT-r01 FOR FIELD pa_modi.
+
+    PARAMETERS : pa_new RADIOBUTTON GROUP rb1.
+    SELECTION-SCREEN COMMENT (10) TEXT-r02 FOR FIELD pa_new.
+
+  SELECTION-SCREEN END OF LINE.
+
+  SELECTION-SCREEN SKIP 1.
+
+  SELECT-OPTIONS : so_stlnr FOR zte2pp0002-stlnr  MODIF ID mod,
+                   so_matnr FOR zte2pp0002-matnr  MODIF ID mod.
+
+  PARAMETERS : pa_maktx TYPE zte2mm0001-maktx  MODIF ID mod,
+               pa_werks TYPE zte2pp0002-werks  MODIF ID mod.
+
+
+SELECTION-SCREEN END OF BLOCK bl1.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

@@ -1,0 +1,14 @@
+*&---------------------------------------------------------------------*
+*& Include SAPMZLKW_PDF_VIEWER_TOP                  - Module Pool      SAPMZLKW_PDF_VIEWER
+*&---------------------------------------------------------------------*
+PROGRAM sapmzlkw_pdf_viewer MESSAGE-ID oo.
+
+DATA : gv_file   TYPE rlgrap-filename,
+       gt_pdf    TYPE TABLE OF x255,
+       gv_okcode TYPE sy-ucomm.
+
+DATA : gcl_container  TYPE REF TO cl_gui_custom_container,
+       gcl_pdf_viewer TYPE REF TO cl_gui_html_viewer.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

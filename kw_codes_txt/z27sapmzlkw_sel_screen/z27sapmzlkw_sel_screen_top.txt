@@ -1,0 +1,17 @@
+*&---------------------------------------------------------------------*
+*& Include SAPMZLKW_SEL_SCREEN_TOP                  - Module Pool      SAPMZLKW_SEL_SCREEN
+*&---------------------------------------------------------------------*
+PROGRAM sapmzlkw_sel_screen MESSAGE-ID oo.
+
+TABLES : sflight.
+
+DATA : gv_okcode TYPE sy-ucomm.
+
+DATA : BEGIN OF gs_input,
+         carrid TYPE sflight-carrid,
+         connid TYPE sflight-connid,
+         fldate TYPE sflight-fldate,
+       END OF gs_input.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

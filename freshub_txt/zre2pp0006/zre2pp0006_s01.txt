@@ -1,0 +1,14 @@
+*&---------------------------------------------------------------------*
+*& Include          ZRE20005_S01
+*&---------------------------------------------------------------------*
+SELECTION-SCREEN FUNCTION KEY 1.
+
+SELECTION-SCREEN BEGIN OF BLOCK bl1 WITH FRAME TITLE TEXT-t01.
+  PARAMETERS : pa_spmon TYPE zte2pp0006-spmon.
+*  SELECTION-SCREEN SKIP.
+*  SELECTION-SCREEN ULINE.
+  PARAMETERS : pa_fname TYPE rlgrap-filename.
+SELECTION-SCREEN END OF BLOCK bl1.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

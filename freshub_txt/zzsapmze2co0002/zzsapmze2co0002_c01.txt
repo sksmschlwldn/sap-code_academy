@@ -1,0 +1,45 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZE2CO0002_C01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Class lcl_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION FINAL.
+
+  PUBLIC SECTION.
+    METHODS:
+      handle_toolbar FOR EVENT toolbar OF cl_gui_alv_grid
+        IMPORTING
+          e_object,
+
+      handle_user_command FOR EVENT user_command OF cl_gui_alv_grid
+        IMPORTING
+          e_ucomm.
+
+ENDCLASS.
+*&---------------------------------------------------------------------*
+*& Class (Implementation) lcl_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler IMPLEMENTATION.
+
+  METHOD handle_toolbar.
+
+    PERFORM handle_toolbar USING e_object.
+
+  ENDMETHOD.
+
+  METHOD handle_user_command.
+
+    PERFORM handle_user_command USING e_ucomm.
+
+  ENDMETHOD.
+
+
+ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

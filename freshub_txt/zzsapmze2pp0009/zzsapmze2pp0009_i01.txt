@@ -1,0 +1,204 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZE2PP0009_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0100 INPUT.
+
+  CALL METHOD : gcl_grid_order->free, gcl_container_order->free.
+
+  FREE : gcl_grid_order, gcl_container_order.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  GET_PRESSED  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE get_pressed INPUT.
+
+  CASE gv_okcode.
+    WHEN 'MRP'.
+      gv_pressedtab = gv_okcode.
+
+      CLEAR gv_okcode.
+
+    WHEN 'ROUTING'.
+      gv_pressedtab = gv_okcode.
+
+      CLEAR gv_okcode.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE gv_okcode.
+
+    WHEN 'REFRESH'.
+      CLEAR gv_okcode.
+      CLEAR gs_search.
+
+      PERFORM init_param.
+      PERFORM get_order.
+      PERFORM set_style.
+      PERFORM refresh_grid_order.
+      PERFORM refresh_doc_l.
+
+      REFRESH : gt_mrp, gt_routing.
+      PERFORM refresh_grid_mrp.
+      PERFORM refresh_grid_rou.
+
+    WHEN 'SEARCH'.
+      DATA    lv_err.
+      CLEAR   gv_okcode.
+      PERFORM check_valid_date CHANGING lv_err.
+      CHECK   lv_err IS INITIAL.
+
+      PERFORM get_order.
+      PERFORM set_style.
+      PERFORM refresh_grid_order.
+      PERFORM refresh_doc_l.
+
+      REFRESH : gt_mrp, gt_routing.
+      PERFORM refresh_grid_mrp.
+      PERFORM refresh_grid_rou.
+
+    WHEN 'RADIO_BTN'.
+      CLEAR gv_okcode.
+
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  F4_MATNR_SELECT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE f4_matnr_select INPUT.
+
+  PERFORM f4_matnr_select.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  CHECK_VALID_DATE  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE check_valid_date INPUT.
+
+  PERFORM check_valid_date USING lv_err.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0103  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0103 INPUT.
+
+  CLEAR gs_pernr.
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0103  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0103 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'OKAY'. " 담당자 팝업
+      PERFORM check_valid_pernr.
+      IF gv_pernr_invalid = 'X'..
+        EXIT.
+      ENDIF.
+
+      CASE gv_ord_type.
+        WHEN 'R'.
+          " PR 생성
+          PERFORM create_purchase_request USING gs_order.
+
+          " 메인화면 데이터, 그리드 갱신
+          PERFORM get_order.
+          PERFORM set_style.
+          PERFORM refresh_grid_order.
+          PERFORM refresh_doc_l.
+
+          REFRESH : gt_mrp, gt_routing.
+          PERFORM refresh_grid_mrp.
+          PERFORM refresh_grid_rou.
+
+          CLEAR gs_pernr.
+          LEAVE TO SCREEN 0. " 팝업 닫기
+
+        WHEN 'S'.
+          PERFORM create_production_order USING  gs_order
+                                                 gt_mrp.
+
+          PERFORM get_order.
+          PERFORM set_style.
+          PERFORM refresh_grid_order.
+          PERFORM refresh_doc_l.
+
+          REFRESH : gt_mrp, gt_routing.
+          PERFORM refresh_grid_mrp.
+          PERFORM refresh_grid_rou.
+
+          CLEAR gs_pernr.
+          LEAVE TO SCREEN 0.
+
+      ENDCASE.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  F4_PERNR  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE f4_pernr INPUT.
+
+  PERFORM f4_pernr.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0104  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0104 INPUT.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0104  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0104 INPUT.
+
+  CASE  gv_okcode.
+    WHEN 'CREATE_NEW'.
+      PERFORM create_new_order.
+
+  ENDCASE.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

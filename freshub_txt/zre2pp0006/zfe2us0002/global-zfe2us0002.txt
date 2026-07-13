@@ -1,0 +1,9 @@
+* regenerated at 2026.04.07 13:09:11
+FUNCTION-POOL ZFGE2US01                  MESSAGE-ID SV.
+
+* INCLUDE LZFGE2US01D...                     " Local class definition
+  INCLUDE LSVIMDAT                                . "general data decl.
+  INCLUDE LZFGE2US01T00                           . "view rel. data dcl.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

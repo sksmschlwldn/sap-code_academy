@@ -1,0 +1,37 @@
+*&---------------------------------------------------------------------*
+*& Include ZLKW_TAB_CONTROL_RADIO_TOP               - Report ZLKW_TAB_CONTROL_RADIO
+*&---------------------------------------------------------------------*
+REPORT zlkw_tab_control_radio MESSAGE-ID oo.
+
+TABLES : scarr.
+
+CONTROLS : go_main_tab TYPE TABSTRIP.
+
+DATA : gv_subscreen  TYPE sy-dynnr VALUE '0101',
+       gv_pressedtab TYPE sy-ucomm VALUE 'SCARR'.
+
+DATA : gs_scarr  TYPE scarr,
+       gt_scarr  LIKE TABLE OF gs_scarr,
+       gs_spfli  TYPE spfli,
+       gt_spfli  LIKE TABLE OF gs_spfli,
+       gv_okcode TYPE sy-ucomm.
+
+DATA : gcl_container_1 TYPE REF TO cl_gui_custom_container,
+       gcl_grid_1      TYPE REF TO cl_gui_alv_grid,
+       gs_fcat         TYPE lvc_s_fcat,
+       gt_fcat_1       TYPE lvc_t_fcat,
+       gs_layout       TYPE lvc_s_layo,
+       gs_variant      TYPE disvariant,
+       gs_stable       TYPE lvc_s_stbl,
+
+       gcl_container_2 TYPE REF TO cl_gui_custom_container,
+       gcl_grid_2      TYPE REF TO cl_gui_alv_grid,
+       gt_fcat_2       TYPE lvc_t_fcat.
+
+DATA : gv_active1,
+       gv_active2,
+       gv_title1(20),
+       gv_title2(20).
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

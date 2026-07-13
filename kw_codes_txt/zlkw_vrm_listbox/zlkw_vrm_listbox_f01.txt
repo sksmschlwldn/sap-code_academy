@@ -1,0 +1,47 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_VRM_LISTBOX_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form f4_carrid
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f4_carrid .
+
+  DATA : ls_list TYPE vrm_value,
+         lt_list LIKE TABLE OF ls_list.
+
+  CLEAR   : ls_list.
+  REFRESH : lt_list.
+
+  SELECT carrid, carrname
+    INTO TABLE @DATA(lt_scarr)
+    FROM scarr.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Data not found'.
+    EXIT.
+  ENDIF.
+
+  LOOP AT lt_scarr INTO DATA(ls_scarr).
+
+    lt_list = VALUE #( BASE lt_list
+                       key  = ls_scarr-carrid
+                       text = ls_scarr-carrname
+                       ( )  "빈괄호 해주면 APPEND 효과 있음
+                     ).
+
+  ENDLOOP.
+
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id     = 'PA_CARR'
+      values = lt_list.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

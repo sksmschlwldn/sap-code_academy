@@ -1,0 +1,1022 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZE2PP0006_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form get_plan
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_plan .
+
+  DATA : lv_last_date  TYPE d, " 계획 연월 검색
+         lv_first_date TYPE d,
+         lr_date       TYPE RANGE OF zte2pp0007-pdatu,
+         ls_date       LIKE LINE OF lr_date,
+         lr_stat       TYPE RANGE OF zte2pp0007-versp,
+         ls_stat       LIKE LINE OF lr_stat.
+
+  CLEAR   : gs_plan.
+  REFRESH : gt_plan.
+
+  IF gs_search-spmon IS NOT INITIAL.
+
+    lv_first_date = gs_search-spmon && '01'.
+
+    CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+      EXPORTING
+        day_in            = lv_first_date
+      IMPORTING
+        last_day_of_month = lv_last_date.
+
+    ls_date-low    = lv_first_date.
+    ls_date-high   = lv_last_date.
+    ls_date-sign   = 'I'.
+    ls_date-option = 'BT'.
+
+    APPEND ls_date TO lr_date.
+    CLEAR  ls_date.
+
+  ENDIF.
+
+  IF gs_search-sel_uncon IS NOT INITIAL.
+    ls_stat-sign   = 'I'.
+    ls_stat-option = 'EQ'.
+    ls_stat-low    = ' '. " 공백인 놈들만 가져와라
+
+    APPEND ls_stat TO lr_stat.
+    CLEAR  ls_stat.
+
+  ENDIF.
+
+*  SELECT a~plnum b~matnr a~pernr
+*         b~posnr b~pdatu b~plnmg b~meins b~versp
+*         c~maktx
+*         d~sname
+*    INTO CORRESPONDING FIELDS OF TABLE gt_plan
+*    FROM zte2pp0006 AS a
+*   INNER JOIN zte2pp0007 AS b
+*      ON a~plnum = b~plnum
+*   INNER JOIN zte2mm0001 AS c
+*      ON b~matnr = c~matnr
+*   INNER JOIN zte2hr0002 AS d
+*      ON a~pernr = d~pernr
+*   WHERE b~pdatu IN lr_date
+*     AND b~versp IN lr_stat.
+
+  SELECT a~plnum, b~matnr, a~pernr,
+         b~posnr, b~pdatu, b~plnmg, b~meins, b~versp,
+         c~maktx,
+         d~sname,
+         CASE b~versp
+         WHEN 'X' THEN '오더 전환 완료'
+         ELSE '오더 전환 대기' END AS stat_txt
+    FROM zte2pp0006 AS a
+   INNER JOIN zte2pp0007 AS b
+      ON a~plnum = b~plnum
+   INNER JOIN zte2mm0001 AS c
+      ON b~matnr = c~matnr
+   INNER JOIN zte2hr0002 AS d
+      ON a~pernr = d~pernr
+   WHERE b~pdatu IN @lr_date
+     AND b~versp IN @lr_stat
+   ORDER BY b~pdatu
+    INTO CORRESPONDING FIELDS OF TABLE @gt_plan.
+
+IF sy-subrc <> 0.
+  IF gv_ok = 'X'.
+    MESSAGE s000 WITH '생산계획이 생산오더로 모두 전환되었습니다.'.
+    CLEAR gv_ok.
+  ELSE.
+    MESSAGE s000 WITH '해당 조건에 일치하는 생산계획이 없습니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+  EXIT.
+ENDIF.
+
+  DATA : lv_data TYPE i.
+
+  SELECT COUNT(*)
+    INTO lv_data
+    FROM zte2pp0007
+   WHERE pdatu IN lr_date
+     AND versp = 'X'.
+
+  gs_doc-converted = |{ lv_data }|.
+
+  SELECT COUNT(*)
+    INTO lv_data
+    FROM zte2pp0007
+   WHERE pdatu IN lr_date
+     AND versp = ' '.
+
+  gs_doc-pending = |{ lv_data }|.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fcat_layout .
+
+  gs_layout-zebra      = 'X'.
+  gs_layout-cwidth_opt = 'A'.
+  gs_layout-sel_mode   = 'A'.
+
+  gs_stable-col = 'X'.
+  gs_stable-row = 'X'.
+
+  PERFORM set_fcat_plan USING :
+        'X'   'STATUS_ICON'   '전환 상태'    ' '   ' ',
+        'X'   'PLNUM'   ' '   'ZTE2PP0006'    ' ',
+        'X'   'POSNR'   ' '   'ZTE2PP0007'    ' ',
+        ' '   'MATNR'   ' '   'ZTE2MM0001'    ' ',
+        ' '   'MAKTX'   ' '   'ZTE2MM0001'    ' ',
+        ' '   'PLNMG'   ' '   'ZTE2PP0007'    ' ',
+        ' '   'MEINS'   ' '   'ZTE2PP0007'    ' ',
+        ' '   'PDATU'   ' '   'ZTE2PP0007'    ' ',
+        ' '   'PERNR'   '계획 담당자'   'ZTE2PP0006'    ' ',
+        ' '   'SNAME'   '담당자명'   'ZTE2HR0002'    ' ',
+        ' '   'STAT_TXT'   '전환 상태 내역'   ' '    ' '.
+
+*        ' '   'VERSP'   '오더 전환 여부'   'ZTE2PP0007'    ' '.
+
+  PERFORM set_fcat_rou USING:
+        'X'   'VORNR'   ' '   'ZTE2PP0005'  ' ',
+        ' '   'ARBPL'   ' '   'ZTE2PP0005'  ' ',
+        ' '   'KTEXT'   '작업장'   'ZTE2PP0001'  ' ',
+        ' '   'LTXA1'   '작업명'   'ZTE2PP0005'  ' '.
+
+  PERFORM set_fcat_bom USING:
+        'X'   'IDNRK'   ' '   'ZTE2PP0003'  ' ',
+        ' '   'MAKTX'   ' '   'ZTE2MM0001'  ' ',
+        ' '   'MENGE'   ' '   'ZTE2PP0003'  ' ',
+        ' '   'MEINS'   ' '   'ZTE2PP0003'  ' '.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_plan
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat_plan  USING   pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'PLNMG'.
+      gs_fcat-qfieldname = 'MEINS'.
+
+    WHEN 'MATNR'.
+      gs_fcat-hotspot = 'X'.
+
+    WHEN 'STATUS_ICON'.
+      gs_fcat-icon = 'X'.
+
+    WHEN 'VERSP'.
+      gs_fcat-checkbox = 'X'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_plan.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_rou
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat_rou   USING   pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  APPEND gs_fcat TO gt_fcat_rou.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_bom
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat_bom  USING   pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'MENGE'.
+      gs_fcat-qfieldname = 'MEINS'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_bom.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_object .
+
+  CREATE OBJECT gcl_container_plan
+    EXPORTING
+      container_name = 'GCL_CONTAINER_PLAN'.
+
+  CREATE OBJECT gcl_grid_plan
+    EXPORTING
+      i_parent = gcl_container_plan.
+
+  CREATE OBJECT gcl_container_doc
+    EXPORTING
+      container_name = 'GCL_CONTAINER_DOC'.
+
+  CREATE OBJECT gcl_splitter
+    EXPORTING
+      parent  = gcl_container_doc
+      rows    = 1
+      columns = 2.
+
+  CALL METHOD gcl_splitter->set_column_width
+    EXPORTING
+      id    = 1      " 왼쪽 칸 번호
+      width = 30.    " 퍼센트(%) 단위
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = gcl_container_lf.
+
+  CREATE OBJECT gcl_document_lf
+    EXPORTING
+      style            = 'ALV_TO_HTML'
+      background_color = 1
+      no_margins       = space.
+
+  PERFORM set_document USING gcl_document_lf.
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 1
+      column    = 2
+    RECEIVING
+      container = gcl_container_rg.
+
+  CREATE OBJECT gcl_document_rg
+    EXPORTING
+      style            = 'ALV_TO_HTML'
+      background_color = 1
+      no_margins       = space.
+
+  PERFORM set_document_2 USING gcl_document_rg.
+
+**********************************************************************
+
+  CREATE OBJECT gcl_container_rou
+    EXPORTING
+      container_name = 'GCL_CONTAINER_ROU'.
+
+  CREATE OBJECT gcl_grid_rou
+    EXPORTING
+      i_parent = gcl_container_rou.
+
+  CREATE OBJECT gcl_container_bom
+    EXPORTING
+      container_name = 'GCL_CONTAINER_BOM'.
+
+  CREATE OBJECT gcl_grid_bom
+    EXPORTING
+      i_parent = gcl_container_bom.
+
+**********************************************************************
+
+  IF gcl_handler IS INITIAL.
+    CREATE OBJECT gcl_handler.
+  ENDIF.
+
+  SET HANDLER : gcl_handler->handle_hotspot      FOR gcl_grid_plan,
+                gcl_handler->handle_toolbar      FOR gcl_grid_plan,
+                gcl_handler->handle_user_command FOR gcl_grid_plan.
+
+  CALL METHOD gcl_grid_plan->set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_plan
+      it_fieldcatalog = gt_fcat_plan.
+
+  gs_layout-no_toolbar = 'X'.
+
+  CALL METHOD gcl_grid_rou->set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_rou
+      it_fieldcatalog = gt_fcat_rou.
+
+  CALL METHOD gcl_grid_bom->set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_bom
+      it_fieldcatalog = gt_fcat_bom.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form init_param
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM init_param .
+
+  gs_search-sel_uncon = 'X'.
+  gs_search-spmon     = sy-datum(6).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f4_month_select
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f4_month_select .
+
+  DATA : lv_month TYPE isellist-month,
+         lv_code  TYPE sy-subrc.
+
+  CALL FUNCTION 'POPUP_TO_SELECT_MONTH'
+    EXPORTING
+      actual_month   = sy-datum(6)
+    IMPORTING
+      selected_month = lv_month
+      return_code    = lv_code.
+
+  IF lv_code = 0.
+    gs_search-spmon = lv_month.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid .
+
+  CALL METHOD gcl_grid_plan->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_hotspot
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW_ID
+*&      --> E_COLUMN_ID
+*&---------------------------------------------------------------------*
+FORM handle_hotspot  USING    ps_row TYPE lvc_s_row
+                              ps_col TYPE lvc_s_col.
+
+  READ TABLE gt_plan INTO gs_plan INDEX ps_row-index.
+
+  IF sy-subrc <> 0.
+    EXIT.
+  ENDIF.
+
+  CASE ps_col-fieldname.
+    WHEN 'MATNR'.
+      PERFORM get_infos USING gs_plan-matnr.
+      PERFORM get_bom USING gs_plan-matnr.
+      PERFORM get_rou USING gs_plan-matnr.
+      PERFORM refresh_bom.
+      PERFORM refresh_rou.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_infos
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_infos USING pv_matnr TYPE zte2pp0008-matnr.
+
+  CLEAR gs_info.
+
+  SELECT SINGLE stlnr
+    INTO CORRESPONDING FIELDS OF gs_info
+    FROM zte2pp0008
+   WHERE matnr = pv_matnr.
+
+  SELECT SINGLE a~plnnr b~ktext
+    INTO CORRESPONDING FIELDS OF gs_info
+    FROM zte2pp0008 AS a
+   INNER JOIN zte2pp0004 AS b
+      ON a~plnnr = b~plnnr
+   WHERE a~matnr = pv_matnr.
+
+  CALL METHOD cl_gui_cfw=>set_new_ok_code
+    EXPORTING
+      new_code = 'GO_PAI'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_icon
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_icon .
+
+  DATA : lv_tabix TYPE sy-tabix.
+
+  LOOP AT gt_plan INTO gs_plan.
+
+    lv_tabix = sy-tabix.
+
+    CASE gs_plan-versp.
+      WHEN 'X'.
+        gs_plan-status_icon = icon_led_green.
+      WHEN OTHERS.
+        gs_plan-status_icon = icon_led_yellow.
+    ENDCASE.
+
+
+    MODIFY gt_plan FROM gs_plan INDEX lv_tabix
+    TRANSPORTING status_icon .
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_document
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GCL_DOCUMENT_LF
+*&---------------------------------------------------------------------*
+FORM set_document  USING  pcl_document TYPE REF TO cl_dd_document.
+
+  DATA : lcl_table TYPE REF TO cl_dd_table_element,
+         lcl_col1  TYPE REF TO cl_dd_area,
+         lcl_col2  TYPE REF TO cl_dd_area,
+         lcl_col3  TYPE REF TO cl_dd_area,
+         lcl_col4  TYPE REF TO cl_dd_area.
+
+  DATA : lv_text TYPE sdydo_text_element.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text         = '생산오더 전환 상태'
+      sap_fontsize = cl_dd_document=>large
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background_inv.
+
+  CALL METHOD pcl_document->new_line.
+  CALL METHOD pcl_document->new_line.
+
+  CALL METHOD pcl_document->add_table
+    EXPORTING
+      no_of_columns               = 4
+      cell_background_transparent = 'X'
+      with_heading                = space
+      border                      = '0'
+    IMPORTING
+      table                       = lcl_table.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '20'
+    IMPORTING
+      column = lcl_col1.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '100'
+    IMPORTING
+      column = lcl_col2.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '20'
+    IMPORTING
+      column = lcl_col3.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '20'
+    IMPORTING
+      column = lcl_col4.
+
+
+  CALL METHOD lcl_col1->add_icon
+    EXPORTING
+      sap_icon = 'ICON_LED_GREEN'.
+
+  lv_text = '오더 전환 완료: ' .
+  CALL METHOD lcl_col2->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background.
+
+
+  CALL METHOD lcl_col3->add_text
+    EXPORTING
+      text         = gs_doc-converted
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background.
+
+  lv_text = '건'.
+  CALL METHOD lcl_col4->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background.
+
+  CALL METHOD lcl_table->new_row.
+
+  CALL METHOD lcl_col1->add_icon
+    EXPORTING
+      sap_icon = 'ICON_LED_YELLOW'.
+
+  lv_text = '오더 전환 대기:  '.
+  CALL METHOD lcl_col2->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background.
+
+
+  CALL METHOD lcl_col3->add_text
+    EXPORTING
+      text         = gs_doc-pending
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background.
+
+  lv_text = '건'.
+  CALL METHOD lcl_col4->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background.
+
+  CALL METHOD pcl_document->merge_document.
+
+  CALL METHOD pcl_document->display_document
+    EXPORTING
+      reuse_control      = 'X'
+      parent             = gcl_container_lf
+    EXCEPTIONS
+      html_display_error = 1.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_document_2
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GCL_DOCUMENT_RF
+*&---------------------------------------------------------------------*
+FORM set_document_2  USING   pcl_document TYPE REF TO cl_dd_document.
+
+  DATA : lcl_table TYPE REF TO cl_dd_table_element,
+         lcl_col1  TYPE REF TO cl_dd_area,
+         lcl_col2  TYPE REF TO cl_dd_area.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text         = '사용 방법'
+      sap_fontsize = cl_dd_document=>large
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background_inv.
+
+  CALL METHOD pcl_document->new_line.
+  CALL METHOD pcl_document->new_line.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text = '1. 계획년월의 생산 계획을 검색합니다.'.
+
+  CALL METHOD pcl_document->new_line.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text = '2. 생산품 클릭 시 해당 제품의 BOM / Routing을 조회합니다.'.
+  CALL METHOD pcl_document->new_line.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text = '3. 대상 행을 선택한 후 생산오더로 전환을 실행합니다.'.
+
+  CALL METHOD pcl_document->merge_document.
+
+  CALL METHOD pcl_document->display_document
+    EXPORTING
+      reuse_control      = 'X'
+      parent             = gcl_container_rg
+    EXCEPTIONS
+      html_display_error = 1.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_doc
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_doc .
+
+  CALL METHOD gcl_document_lf->initialize_document.
+
+  PERFORM set_document USING gcl_document_lf.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_order
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_order .
+
+  DATA : ls_save_h TYPE zte2pp0009,
+         ls_save_i TYPE zte2pp0010,
+         lt_save_h LIKE TABLE OF ls_save_h,
+         lt_save_i LIKE TABLE OF ls_save_i,
+         ls_row    TYPE lvc_s_row,
+         lt_row    TYPE lvc_t_row,
+         lv_commit,
+         lv_cnt    TYPE i,
+         lv_aufnr  TYPE zte2pp0009-aufnr,
+         BEGIN OF ls_detail,
+           stlnr TYPE zte2pp0009-stlnr,
+           plnnr TYPE zte2pp0009-plnnr,
+         END OF ls_detail,
+         ls_timestamp TYPE zse2timestamp,
+
+         ls_plan      TYPE zte2pp0007,
+         lt_plan      LIKE TABLE OF zte2pp0007.
+
+  CALL METHOD gcl_grid_plan->get_selected_rows
+    IMPORTING
+      et_index_rows = lt_row.
+
+  lv_cnt = lines( lt_row ).
+
+  IF lv_cnt < 1.
+    MESSAGE s000 WITH '오더로 전환할 행을 선택해주세요.' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  LOOP AT lt_row INTO ls_row.
+
+    READ TABLE gt_plan INTO gs_plan INDEX ls_row-index.
+
+    IF sy-subrc = 0.
+
+      IF gs_plan-versp = 'X'.
+        MESSAGE s000 WITH '이미 전환된 생산계획입니다.' DISPLAY LIKE 'E'.
+        RETURN.
+      ENDIF.
+
+      PERFORM make_gr_aufnr USING lv_aufnr.
+
+      SELECT SINGLE stlnr plnnr
+        INTO CORRESPONDING FIELDS OF ls_detail
+        FROM zte2pp0008
+       WHERE matnr = gs_plan-matnr.
+
+      MOVE-CORRESPONDING ls_detail TO ls_save_h.
+
+      ls_save_h = VALUE #( BASE ls_save_h
+                                aufnr = lv_aufnr        " 생산오더번호
+                                auart = 'ZFCT'          " 생산오더 유형
+                                plnum = gs_plan-plnum   " 생산계획번호
+                                plpos = gs_plan-posnr   " 생산계획항목
+                                plnbez = gs_plan-matnr   " 자재번호
+                                gamng = gs_plan-plnmg   " 생산 지시 수량
+                                meins = gs_plan-meins   " 단위
+                                gstrp = gs_plan-pdatu   " 계획 시작일
+                                gltrp = gs_plan-pdatu   " 계획종료일 이거 추후수정 ㅇ
+                                apstat = '1'            " 대기중
+                                ordat = sy-datum        " 오더 생성일
+                           ).
+
+      MOVE-CORRESPONDING gs_plan TO ls_timestamp.
+
+      CALL FUNCTION 'ZFE2US0002'
+        EXPORTING
+          is_timestamp = ls_timestamp
+        IMPORTING
+          es_timestamp = ls_timestamp.
+
+      MOVE-CORRESPONDING ls_timestamp TO ls_save_h.
+
+      APPEND ls_save_h TO lt_save_h.
+      CLEAR  ls_save_h.
+
+      " 오더전환여부 체크 - plan테이블에 ㅇㅇ
+      MOVE-CORRESPONDING gs_plan TO ls_plan.
+      ls_plan-versp = 'X'.
+      APPEND ls_plan TO lt_plan.
+      CLEAR : ls_plan, gs_plan.
+
+    ENDIF.
+
+  ENDLOOP.
+
+  IF lt_save_h IS NOT INITIAL.
+    MODIFY zte2pp0009 FROM TABLE lt_save_h.
+    IF sy-subrc <> 0.
+      lv_commit = 'X'.
+    ENDIF.
+
+    MODIFY zte2pp0007 FROM TABLE lt_plan.
+    IF sy-subrc <> 0.
+      lv_commit = 'X'.
+    ENDIF.
+
+  ENDIF.
+
+  IF lv_commit <> 'X'.
+    COMMIT WORK AND WAIT.
+    gv_ok = 'X'.
+    MESSAGE s000 WITH '생산오더로 전환이 완료되었습니다.'.
+    PERFORM get_plan.
+    PERFORM set_icon.
+    CLEAR  : gs_info_bom, gs_info_rou.
+    PERFORM refresh_grid.
+    PERFORM refresh_screen.
+    " 나중에 생산오더에없는거만 전환해야함.
+    " 애초에 전환된거 versp = 'X'는 전환 못하게 !!!
+  ELSE.
+    ROLLBACK WORK.
+    MESSAGE s000 WITH '생산오더 전환중 문제가 생겼습니다.' DISPLAY LIKE 'E'.
+
+    CLEAR lv_commit.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_gr_aufnr
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> LV_AUFNR
+*&---------------------------------------------------------------------*
+FORM make_gr_aufnr  USING  pv_aufnr.
+
+  DATA : lv_num(7) TYPE n,
+         lv_range  TYPE inri-nrrangenr VALUE '01',
+         lv_obj    TYPE inri-object VALUE 'ZNRE2PP01'.
+
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = lv_range      " 사용하고자 하는 구간
+      object      = lv_obj      " nr 객체
+    IMPORTING
+      number      = lv_num.
+
+* CONCATENATE 'GR' lv_num INTO pv_grno.
+
+  pv_aufnr = |PRD{ lv_num }|.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_screen .
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_toolbar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_OBJECT
+*&---------------------------------------------------------------------*
+FORM handle_toolbar  USING  pcl_object TYPE REF TO cl_alv_event_toolbar_set.
+
+  gs_alv_toolbar-butn_type = 3.
+  gs_alv_toolbar-icon      = icon_dummy.
+
+  APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+  CLEAR  gs_alv_toolbar.
+
+  gs_alv_toolbar-butn_type = 0.
+  gs_alv_toolbar-function  = 'CREATE_ORDER'.
+  gs_alv_toolbar-icon      = icon_create.
+  gs_alv_toolbar-text      = '생산오더 전환'.
+  gs_alv_toolbar-quickinfo = 'Create order'.
+
+  APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+  CLEAR  gs_alv_toolbar.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_user_command
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_UCOMM
+*&---------------------------------------------------------------------*
+FORM handle_user_command  USING  pv_ucomm TYPE sy-ucomm.
+
+  CASE pv_ucomm.
+    WHEN 'CREATE_ORDER'.
+      CLEAR gv_okcode.
+      PERFORM create_order.
+      PERFORM refresh_grid.
+      PERFORM refresh_doc.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_bom
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_PLAN_MATNR
+*&---------------------------------------------------------------------*
+FORM get_bom  USING    pv_matnr TYPE zte2mm0001-matnr.
+
+  SELECT SINGLE stlnr bmeng meins
+    INTO CORRESPONDING FIELDS OF gs_info_bom
+    FROM zte2pp0002
+   WHERE matnr = pv_matnr.
+
+  SELECT a~idnrk a~menge a~meins
+         b~maktx
+    INTO CORRESPONDING FIELDS OF TABLE gt_bom
+    FROM zte2pp0002 AS c
+   INNER JOIN zte2pp0003 AS a
+      ON a~stlnr = c~stlnr
+   INNER JOIN zte2mm0001 AS b
+      ON a~idnrk = b~matnr
+   WHERE c~matnr = pv_matnr.
+
+  IF sy-subrc <> 0 .
+    MESSAGE s000 WITH '해당 생산의 BOM이 존재하지 않습니다.' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_rou
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_PLAN_MATNR
+*&---------------------------------------------------------------------*
+FORM get_rou  USING    pv_matnr TYPE zte2mm0001-matnr.
+
+  SELECT SINGLE a~plnnr b~ktext c~werks b~runyn a~bmsch a~meins
+    INTO CORRESPONDING FIELDS OF gs_info_rou
+    FROM zte2pp0005 AS  a
+   INNER JOIN zte2pp0004 AS b
+      ON a~plnnr = b~plnnr
+   INNER JOIN zte2pp0001 AS c
+      ON a~arbpl = c~arbpl
+   INNER JOIN zte2pp0008 AS d
+      ON d~matnr = pv_matnr
+     AND d~plnnr = b~plnnr.
+
+  CASE gs_info_rou-runyn.
+    WHEN 'Y'.
+      gs_info_rou-text = '가동'.
+    WHEN 'N'.
+      gs_info_rou-text = '정지'.
+  ENDCASE.
+
+
+  SELECT a~vornr a~arbpl a~ltxa1
+         b~ktext
+    INTO CORRESPONDING FIELDS OF TABLE gt_rou
+    FROM zte2pp0005 AS a
+   INNER JOIN zte2pp0001 AS b
+      ON a~arbpl = b~arbpl
+   INNER JOIN zte2pp0008 AS c
+      ON c~matnr = pv_matnr
+     AND c~plnnr = a~plnnr
+   ORDER BY a~vornr.
+
+  IF sy-subrc <> 0 .
+    MESSAGE s000 WITH '해당 생산의 라우팅이 존재하지 않습니다.' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_bom
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_bom .
+
+  CALL METHOD gcl_grid_bom->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_rou
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_rou.
+
+  CALL METHOD gcl_grid_rou->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

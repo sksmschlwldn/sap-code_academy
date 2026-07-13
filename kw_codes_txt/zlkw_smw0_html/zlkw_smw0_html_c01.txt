@@ -1,0 +1,37 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZLKW_SMW0_HTML_C01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Class lcl_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION FINAL.
+  PUBLIC SECTION.
+    METHODS :
+      handle_click FOR EVENT sapevent OF cl_gui_html_viewer
+        IMPORTING
+          action
+          getdata
+          postdata
+          query_table.
+
+ENDCLASS.
+*&---------------------------------------------------------------------*
+*& Class (Implementation) lcl_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler IMPLEMENTATION.
+
+  METHOD handle_click.
+
+    PERFORM handle_click TABLES postdata query_table
+                          USING action getdata.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

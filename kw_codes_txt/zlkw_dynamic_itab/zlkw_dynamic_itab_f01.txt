@@ -1,0 +1,112 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_DYNAMIC_ITAB_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form get_table_info
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_table_info .
+
+  CLEAR  : gs_field, gs_field_label.
+  _clear : gt_field, gt_field_label, gt_field_fcat.
+
+* 입력된 테이블의 Field 정보 조회
+  SELECT fieldname AS field leng
+    INTO CORRESPONDING FIELDS OF TABLE gt_field
+    FROM dd03l
+   WHERE tabname = pa_tab.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Check Table ID' DISPLAY LIKE 'E'.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+* 테이블 필드의 텍스트 조회
+  SELECT fieldname reptext scrtext_s scrtext_m scrtext_l
+    INTO CORRESPONDING FIELDS OF TABLE gt_field_label
+    FROM dd03m
+   WHERE tabname    = pa_tab
+     AND ddlanguage = sy-langu.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_dynamic_itab
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM make_dynamic_itab .
+
+  SORT gt_field_label BY fieldname.
+
+  LOOP AT gt_field INTO gs_field.
+
+    READ TABLE gt_field_label INTO gs_field_label
+    WITH KEY fieldname = gs_field-field
+    BINARY SEARCH.
+
+    IF sy-subrc NE 0.
+      CONTINUE.
+    ENDIF.
+
+    PERFORM set_fcat USING :
+    gs_field-field
+    gs_field_label-reptext
+    gs_field_label-scrtext_s
+    gs_field_label-scrtext_m
+    gs_field_label-scrtext_l
+    gs_field-leng.
+
+  ENDLOOP.
+
+* Dynamic Itab 생성
+  CALL METHOD cl_alv_table_create=>create_dynamic_table
+    EXPORTING
+      it_fieldcatalog = gt_fcat
+    IMPORTING
+      ep_table        = go_new_table.
+
+* Create a new Line with the same structure of the table.
+  ASSIGN go_new_table->* TO <gt_table>.
+  CREATE DATA go_new_line  LIKE LINE OF <gt_table>.
+  ASSIGN go_new_line->* TO <gs_line>.
+
+  _clear <gt_table>.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_FIELD_FIELD
+*&      --> GS_FIELD_LABEL_REPTEXT
+*&      --> GS_FIELD_LABEL_SCRTEXT_S
+*&      --> GS_FIELD_LABEL_SCRTEXT_M
+*&      --> GS_FIELD_LABEL_SCRTEXT_L
+*&      --> GS_FIELD_LENG
+*&---------------------------------------------------------------------*
+FORM set_fcat  USING pv_field pv_text pv_text_s pv_text_m pv_text_l pv_leng.
+
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-scrtext_s = pv_text_s.
+  gs_fcat-scrtext_m = pv_text_m.
+  gs_fcat-scrtext_l = pv_text_l.
+  gs_fcat-outputlen = pv_leng.
+  gs_fcat-ref_table = pa_tab.
+  gs_fcat-ref_field = pv_field.
+
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

@@ -1,0 +1,182 @@
+*&---------------------------------------------------------------------*
+*& Report ZLKW_EMAIL_TEST
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zlkw_email_test_oop MESSAGE-ID oo.
+
+DATA : gt_objbin TYPE solix_tab,
+       gv_size   TYPE i.
+
+PARAMETERS : pa_file  TYPE string,
+             pa_email TYPE adr6-smtp_addr.
+
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR pa_file.
+  PERFORM get_file.
+
+
+START-OF-SELECTION.
+
+  DATA : lcx_exception     TYPE REF TO cx_bcs,
+         lv_err            TYPE string,
+         lcl_send          TYPE REF TO cl_bcs,
+         lcl_document      TYPE REF TO cl_document_bcs,
+         lcl_recipient     TYPE REF TO if_recipient_bcs,
+         ls_attach_head    TYPE soli,
+         lt_attach_head    TYPE soli_tab,
+         lv_attach_subject TYPE sood-objdes,
+         lv_byte_cnt       TYPE sood-objlen,
+         lv_mail_title     TYPE so_obj_des,
+         lt_mail_contents  TYPE soli_tab,
+         lv_send_to        TYPE adr6-smtp_addr,
+         lt_row_rec        TYPE solix_tab,
+         lv_file_type      TYPE sood-objtp,
+         lv_fullpath(100),
+         lv_sent.
+
+* Mail Title
+  lv_mail_title = 'Email Send Test'.
+
+* Email 본문
+  APPEND '이것은'         TO lt_mail_contents.
+  APPEND 'Email 전송'     TO lt_mail_contents.
+  APPEND '테스트 입니다.' TO lt_mail_contents.
+  APPEND '잘 갔나?'       TO lt_mail_contents.
+
+  TRY.
+
+      lcl_send     = cl_bcs=>create_persistent( ).
+
+      lcl_document = cl_document_bcs=>create_document(
+                        i_type    = 'RAW'
+                        i_text    = lt_mail_contents
+                        i_subject = lv_mail_title    ).
+
+*  첨부파일
+      IF gt_objbin IS NOT INITIAL.
+
+        SPLIT pa_file AT '.' INTO lv_fullpath lv_file_type.
+
+        lv_attach_subject = |구매 발주서.{ lv_file_type }|.
+
+        ls_attach_head = VALUE #( line = |&SO_FILENAME={ lv_attach_subject }| ).
+
+        APPEND ls_attach_head TO lt_attach_head.
+        CLEAR  ls_attach_head.
+
+        lv_byte_cnt = gv_size.
+
+        lcl_document->add_attachment(
+          i_attachment_type    = lv_file_type
+          i_attachment_subject = lv_attach_subject
+          i_attachment_size    = lv_byte_cnt
+          i_att_content_hex    = gt_objbin
+          i_attachment_header  = lt_attach_head ).
+
+      ENDIF.
+
+      lcl_send->set_document( lcl_document ).
+
+      " 수신처
+      lv_send_to = pa_email.
+
+      " 수신처 추가
+      lcl_recipient = cl_cam_address_bcs=>create_internet_address( lv_send_to ).
+      lcl_send->add_recipient( lcl_recipient ).
+      lcl_send->set_send_immediately( i_send_immediately = 'X' ).
+
+      "보내고 결과 받기
+      lv_sent = lcl_send->send( i_with_error_screen = 'X' ).
+
+      IF lv_sent EQ 'X'.
+        COMMIT WORK AND WAIT.
+        MESSAGE s000 WITH '메일이 발송 되었습니다.'.
+      ENDIF.
+
+    CATCH cx_bcs INTO lcx_exception.
+      lv_err = lcx_exception->if_message~get_text( ).
+      MESSAGE s000 WITH lv_err DISPLAY LIKE 'E'.
+  ENDTRY.
+
+*&---------------------------------------------------------------------*
+*& Form get_file
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_file .
+
+  CLEAR   gv_size.
+  REFRESH gt_objbin.
+
+  CALL FUNCTION 'WS_FILENAME_GET'
+    EXPORTING
+      def_path         = 'C:/'
+      mask             = ',*.xls;*.xlsx,*.xls;*.xlsx,*.pdf;*.pdf,*.pdf;*.pdf,'
+      mode             = 'O'
+    IMPORTING
+      filename         = pa_file
+    EXCEPTIONS
+      inv_winsys       = 1
+      no_batch         = 2
+      selection_cancel = 3
+      selection_error  = 4
+      OTHERS           = 5.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH '파일선택을 취소했습니다'.
+    EXIT.
+  ENDIF.
+
+  CALL FUNCTION 'GUI_UPLOAD'
+    EXPORTING
+      filename                = pa_file
+      filetype                = 'BIN'
+    IMPORTING
+      filelength              = gv_size
+    TABLES
+      data_tab                = gt_objbin
+    EXCEPTIONS
+      file_open_error         = 1
+      file_read_error         = 2
+      no_batch                = 3
+      gui_refuse_filetransfer = 4
+      invalid_type            = 5
+      no_authority            = 6
+      unknown_error           = 7
+      bad_data_format         = 8
+      header_not_allowed      = 9
+      separator_not_allowed   = 10
+      header_too_long         = 11
+      unknown_dp_error        = 12
+      access_denied           = 13
+      dp_out_of_memory        = 14
+      disk_full               = 15
+      dp_timeout              = 16
+      OTHERS                  = 17.
+
+ENDFORM.
+
+*Text elements
+*----------------------------------------------------------
+* T01 PDF
+* T02 XLSX
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_EMAIL D       .
+* PA_FILE         Attach File
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

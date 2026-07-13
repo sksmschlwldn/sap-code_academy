@@ -1,0 +1,47 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_SPLIT_SPLIT_EDU_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0100 INPUT.
+
+  CALL METHOD : gcl_grid_top->free,        gcl_grid_left->free,
+                gcl_grid_right->free,      gcl_container_top->free,
+                gcl_container_left->free,  gcl_container_right->free,
+                gcl_splitter_bot->free,    gcl_container_bot->free,
+                gcl_splitter->free,        gcl_container->free.
+
+  FREE : gcl_grid_top,        gcl_grid_left,
+         gcl_grid_right,      gcl_container_top,
+         gcl_container_left,  gcl_container_right,
+         gcl_splitter_bot,    gcl_container_bot,
+         gcl_splitter,        gcl_container.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'REFRESH'.
+      CLEAR gv_okcode.
+
+      PERFORM get_data.
+      PERFORM refresh_grid_top.
+      PERFORM refresh_grid_mid.
+      PERFORM refresh_grid_bot.
+
+  ENDCASE.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

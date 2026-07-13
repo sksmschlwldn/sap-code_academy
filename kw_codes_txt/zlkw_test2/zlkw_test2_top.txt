@@ -1,0 +1,10 @@
+*&---------------------------------------------------------------------*
+*& Include ZLKW_TEST2_TOP                           - Report ZLKW_TEST2
+*&---------------------------------------------------------------------*
+REPORT zlkw_test2 MESSAGE-ID oo.
+
+DATA : gv_okcode      TYPE sy-ucomm,
+       gv_btn_txt(20) VALUE '기본 문구'.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

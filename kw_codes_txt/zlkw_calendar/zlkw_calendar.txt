@@ -1,0 +1,26 @@
+*&---------------------------------------------------------------------*
+*& Module Pool      ZLKW_CALENDAR
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE ZLKW_CALENDAR_TOP                   .    " Global Data
+
+INCLUDE ZLKW_CALENDAR_C01                  .  " Local Class
+INCLUDE ZLKW_CALENDAR_O01                  .  " PBO-Modules
+INCLUDE ZLKW_CALENDAR_I01                  .  " PAI-Modules
+INCLUDE ZLKW_CALENDAR_F01                  .  " FORM-Routines
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [C5] Calendar Sample with Selected Event
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

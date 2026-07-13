@@ -1,0 +1,109 @@
+*&---------------------------------------------------------------------*
+*& Include          ZRE2PP0002_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0100 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'BACK' OR 'EXIT' OR 'CANC'.
+      CALL METHOD : gcl_grid_i->free, gcl_grid_h->free,
+                  gcl_container_i->free, gcl_container_h->free.
+
+      FREE: gcl_grid_i, gcl_grid_h, gcl_container_i, gcl_container_h.
+
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+ENDMODULE.
+
+MODULE user_command_0100 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'REFRESH'.
+      CLEAR gv_okcode.
+      CLEAR gv_sel_bom.
+
+      PERFORM get_bom_h.
+      PERFORM get_bom_i USING gv_sel_bom.
+      PERFORM set_style.
+      PERFORM refresh_grid_h.
+      PERFORM refresh_grid_i.
+
+    WHEN 'SAVE' OR 'SAVE_BOM'.
+      CLEAR gv_okcode.
+      gv_mode = 'D'.
+      PERFORM modify_screen.
+
+      PERFORM save_data.
+      PERFORM get_bom_h.
+      PERFORM get_bom_i USING gv_sel_bom.
+      PERFORM set_style.
+      PERFORM refresh_grid_h.
+      PERFORM refresh_grid_i.
+
+    WHEN 'GO_PAI'.
+      RETURN.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0200 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'BACK' OR 'EXIT' OR 'CANC'.
+      CALL METHOD : gcl_grid_i->free, gcl_grid_h->free,
+                        gcl_container_i->free, gcl_container_h->free.
+
+      FREE: gcl_grid_i, gcl_grid_h, gcl_container_i, gcl_container_h.
+
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+
+  CASE gv_okcode.
+    WHEN 'SAVE_NEW'.
+      CLEAR gv_okcode.
+
+      PERFORM save_new_bom.
+      PERFORM get_bom_h.
+
+    WHEN 'GO_PAI'.
+      RETURN.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  F4_MATNR  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE f4_matnr INPUT.
+
+  PERFORM f4_matnr.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

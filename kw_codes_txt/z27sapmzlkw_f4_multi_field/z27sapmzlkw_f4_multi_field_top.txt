@@ -1,0 +1,21 @@
+*&---------------------------------------------------------------------*
+*& Include SAPMZLKW_F4_MULTI_FIELD_TOP              - Module Pool      SAPMZLKW_F4_MULTI_FIELD
+*&---------------------------------------------------------------------*
+PROGRAM sapmzlkw_f4_multi_field MESSAGE-ID oo.
+
+DATA : BEGIN OF gs_input,
+         carrid   TYPE scarr-carrid,
+         carrname TYPE scarr-carrname,
+         url      TYPE scarr-url,
+       END OF gs_input,
+
+       gs_return TYPE ddshretval,
+       gt_return LIKE TABLE OF ddshretval,
+
+       gv_qty    TYPE mseg-menge,
+       gv_meins  TYPE mseg-meins,
+
+       gv_okcode TYPE sy-ucomm.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

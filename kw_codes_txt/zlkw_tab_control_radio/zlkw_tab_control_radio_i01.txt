@@ -1,0 +1,63 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_TAB_CONTROL_RADIO_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit_0100 INPUT.
+
+  CALL METHOD : gcl_grid_1->free( )     , gcl_grid_2->free( ),
+                gcl_container_1->free( ), gcl_container_2->free( ).
+
+  FREE : gcl_grid_1, gcl_grid_2, gcl_container_1, gcl_container_2.
+
+  LEAVE TO SCREEN 0.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  GET_PRESSED  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE get_pressed INPUT.
+
+  CASE gv_okcode.
+    WHEN 'SCARR'.
+      gv_pressedtab = gv_okcode.
+      gv_active1    = 'X'.
+
+      CLEAR : gv_okcode, gv_active2.
+
+    WHEN 'SPFLI'.
+      gv_pressedtab = gv_okcode.
+      gv_active2    = 'X'.
+
+      CLEAR : gv_okcode, gv_active1.
+
+    WHEN 'T1'.
+
+      CASE 'X'.
+        WHEN gv_active1.
+          gv_pressedtab = 'SCARR'.
+
+        WHEN gv_active2.
+          gv_pressedtab = 'SPFLI'.
+
+      ENDCASE.
+
+  ENDCASE.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

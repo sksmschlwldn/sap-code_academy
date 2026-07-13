@@ -1,0 +1,89 @@
+*&---------------------------------------------------------------------*
+*& Include ZRE20006_TOP                             - Report ZRE2PP0005
+*&---------------------------------------------------------------------*
+REPORT zre2pp0006 MESSAGE-ID zpe2m.
+
+TABLES : sscrfields.
+
+INCLUDE officeintegrationinclude.
+
+TYPE-POOLS : truxs, slis, soi, icon.
+
+CLASS : lcl_event_handler DEFINITION DEFERRED.
+
+" smw0 엑셀다운 기능 구현을 위한 전역변수 선언
+DATA : gt_doc_table      TYPE TABLE OF w3mime,
+       gv_doc_size       TYPE i,
+       gv_doc_type(80)   VALUE soi_doctype_excel97_sheet,
+       gv_doc_format(80),
+       gcl_link_server   TYPE REF TO i_oi_link_server,
+       gcl_factory       TYPE REF TO i_oi_document_factory,
+       gcl_document      TYPE REF TO i_oi_document_proxy,
+       gv_retcode        TYPE t_oi_ret_string.
+
+" 엑셀 업로드
+DATA : gt_excel TYPE TABLE OF alsmex_tabline,
+       gs_excel TYPE alsmex_tabline.
+
+DATA : BEGIN OF gs_plan,
+         pbdnr TYPE zte2pp0006-pbdnr, " 판매계획
+         spmon TYPE zte2pp0006-spmon, " 계획월
+         pdatu TYPE zte2pp0007-pdatu, " 생산일자
+         matnr TYPE zte2mm0001-matnr,
+         maktx TYPE zte2mm0001-maktx,
+         plnmg TYPE zte2pp0007-plnmg, " 계획수량
+         meins TYPE zte2pp0007-meins, " 단위
+         style TYPE lvc_t_styl,
+         mark,
+       END OF gs_plan,
+
+       gt_plan     LIKE TABLE OF gs_plan,
+       gt_plan_org LIKE TABLE OF gs_plan,
+       gt_plan_del LIKE TABLE OF gs_plan,
+
+       BEGIN OF gs_search,
+         plnnr TYPE zte2sd0016-plnnr,
+         gjahr TYPE zte2sd0015-gjahr,
+         poper TYPE zte2sd0016-poper,
+         matnr TYPE zte2sd0016-matnr,
+       END OF gs_search,
+
+       BEGIN OF gs_s_plan.
+         INCLUDE STRUCTURE gs_search.
+DATA : maktx  TYPE zte2mm0001-maktx,
+         kwmeng TYPE zte2sd0016-kwmeng,
+         vrkme  TYPE zte2sd0016-vrkme,
+       END OF gs_s_plan,
+
+       gt_s_plan LIKE TABLE OF gs_s_plan,
+       BEGIN OF gs_pernr,
+         pernr  TYPE zte2pp0006-pernr,
+         sname   TYPE zte2hr0002-sname,
+       END OF gs_pernr,
+
+       gv_okcode TYPE sy-ucomm,
+       gv_state  TYPE i,
+       gv_pbdnr  TYPE ZTE2PP0006-pbdnr.
+
+* ALV 관련
+DATA : gcl_container_plan  TYPE REF TO cl_gui_custom_container,
+       gcl_grid_plan       TYPE REF TO cl_gui_alv_grid,
+       gcl_container_sales TYPE REF TO cl_gui_custom_container,
+       gcl_grid_sales      TYPE REF TO cl_gui_alv_grid,
+       gcl_handler         TYPE REF TO lcl_event_handler,
+       gt_fcat_plan        TYPE lvc_t_fcat,
+       gt_fcat_sales       TYPE lvc_t_fcat,
+       gs_fcat             TYPE lvc_s_fcat,
+       gs_layout           TYPE lvc_s_layo,
+       gs_variant          TYPE disvariant,
+       gs_stable           TYPE lvc_s_stbl,
+       gt_exclude          TYPE ui_functions,
+       gs_row              TYPE lvc_s_row,
+       gt_row              TYPE lvc_t_row,
+       gs_alv_toolbar      TYPE stb_button,
+
+       gcl_container_doc   TYPE REF TO cl_gui_custom_container,
+       gcl_doc             TYPE REF TO cl_dd_document.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

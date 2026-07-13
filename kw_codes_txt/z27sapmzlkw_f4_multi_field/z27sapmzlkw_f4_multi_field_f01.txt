@@ -1,0 +1,124 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZLKW_F4_MULTI_FIELD_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form f4_carrid
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f4_carrid .
+
+  DATA : BEGIN OF ls_scarr,
+           carrid   TYPE scarr-carrid,
+           carrname TYPE scarr-carrname,
+           url      TYPE scarr-url,
+         END OF ls_scarr,
+
+         BEGIN OF ls_value,
+           value(241),
+         END OF ls_value,
+
+         lt_value LIKE TABLE OF ls_value,
+         lt_scarr LIKE TABLE OF ls_scarr,
+         lt_map   TYPE TABLE OF dselc,
+         lt_field TYPE TABLE OF dfies.
+
+  SELECT carrid carrname url
+    INTO CORRESPONDING FIELDS OF TABLE lt_scarr
+    FROM scarr.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'No values found'.
+    EXIT.
+  ENDIF.
+
+  LOOP AT lt_scarr INTO ls_scarr.
+
+    lt_value = VALUE #( BASE lt_value
+                        value = ls_scarr-carrid
+                        ( )
+                        value = ls_scarr-carrname
+                        ( )
+                        value = ls_scarr-url
+                        ( )
+                      ).
+  ENDLOOP.
+
+  lt_field = VALUE #(
+                       fieldname = 'CARRID'
+                       tabname   = 'SCARR'
+                       ( )
+                       fieldname = 'CARRNAME'
+                       tabname   = 'SCARR'
+                       ( )
+                       fieldname = 'URL'
+                       tabname   = 'SCARR'
+                       ( )
+                    ).
+
+*  CALL FUNCTION 'DDIF_FIELDINFO_GET'
+*    EXPORTING
+*      tabname   = 'SCARR'
+*    TABLES
+*      dfies_tab = lt_field.
+
+*  DELETE lt_field WHERE fieldname EQ 'MANDT' OR
+*                        fieldname EQ 'CURRCODE'.
+
+  lt_map = VALUE #(
+                    fldname   = 'CARRID'
+                    dyfldname = 'GS_INPUT-CARRID'
+                    ( )
+                    fldname   = 'CARRNAME'
+                    dyfldname = 'GS_INPUT-CARRNAME'
+                    ( )
+                    fldname   = 'URL'
+                    dyfldname = 'GS_INPUT-URL'
+                    ( )
+                  ).
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'CARRID'
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      window_title    = 'Airline F4'
+      value_org       = 'C'
+    TABLES
+      value_tab       = lt_value
+      field_tab       = lt_field
+      return_tab      = gt_return
+      dynpfld_mapping = lt_map.
+
+  IF sy-subrc <> 0.
+    MESSAGE s000 WITH 'F4 Error' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  LOOP AT gt_return INTO gs_return.
+
+    CASE sy-tabix.
+      WHEN 1.
+        gs_input-carrid = gs_return-fieldval.
+
+      WHEN 2.
+        gs_input-carrname = gs_return-fieldval.
+
+      WHEN 3.
+        gs_input-url = gs_return-fieldval.
+
+    ENDCASE.
+
+  ENDLOOP.
+
+  CALL FUNCTION 'SAPGUI_SET_FUNCTIONCODE'
+    EXPORTING
+      functioncode = '='.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

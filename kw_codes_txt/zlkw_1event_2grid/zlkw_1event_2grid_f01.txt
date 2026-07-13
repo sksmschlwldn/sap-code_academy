@@ -1,0 +1,419 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_1EVENT_2GRID_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form get_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_data .
+
+  CLEAR   : gs_scarr, gs_spfli, gs_sflight.
+  REFRESH : gt_scarr, gt_spfli, gt_sflight.
+
+  SELECT carrid carrname currcode url
+    INTO CORRESPONDING FIELDS OF TABLE gt_scarr
+    FROM scarr
+   WHERE carrid IN so_carr.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Data not found'.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fcat_layout .
+
+  gs_layout-zebra      = 'X'.
+  gs_layout-cwidth_opt = 'A'.
+  gs_layout-sel_mode   = 'D'.
+
+  gs_stable-row = 'X'.
+  gs_stable-col = 'X'.
+
+  PERFORM set_fcat_top USING :
+  'X'   'CARRID'    ' '   'SCARR'   'CARRID',
+  ' '   'CARRNAME'  ' '   'SCARR'   'CARRNAME',
+  ' '   'CURRCODE'  ' '   'SCARR'   'CURRCODE',
+  ' '   'URL'       ' '   'SCARR'   'URL'.
+
+  PERFORM set_fcat_mid USING :
+  'X'   'CARRID'    ' '   'SPFLI'   'CARRID',
+  'X'   'CONNID'    ' '   'SPFLI'   'CONNID',
+  ' '   'COUNTRYFR' ' '   'SPFLI'   'COUNTRYFR',
+  ' '   'CITYFROM'  ' '   'SPFLI'   'CITYFROM',
+  ' '   'COUNTRYTO' ' '   'SPFLI'   'COUNTRYTO',
+  ' '   'CITYTO'    ' '   'SPFLI'   'CITYTO',
+  ' '   'FLTIME'    ' '   'SPFLI'   'FLTIME',
+  ' '   'FLTYPE'    ' '   'SPFLI'   'FLTYPE'.
+
+  PERFORM set_fcat_bot USING :
+  'X'   'CARRID'      ' '   'SFLIGHT'   'CARRID',
+  'X'   'CONNID'      ' '   'SFLIGHT'   'CONNID',
+  'X'   'FLDATE'      ' '   'SFLIGHT'   'FLDATE',
+  ' '   'PRICE'       ' '   'SFLIGHT'   'PRICE',
+  ' '   'CURRENCY'    ' '   'SFLIGHT'   'CURRENCY',
+  ' '   'PLANETYPE'   ' '   'SFLIGHT'   'PLANETYPE',
+  ' '   'PAYMENTSUM'  ' '   'SFLIGHT'   'PAYMENTSUM'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_top
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat_top USING pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  APPEND gs_fcat TO gt_fcat_top.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_mid
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_4
+*&---------------------------------------------------------------------*
+FORM set_fcat_mid USING pv_key
+                        pv_field
+                        pv_text
+                        pv_ref_table
+                        pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'FLTYPE'.
+      gs_fcat-checkbox = 'X'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_mid.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_bot
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_4
+*&---------------------------------------------------------------------*
+FORM set_fcat_bot USING pv_key
+                        pv_field
+                        pv_text
+                        pv_ref_table
+                        pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'PRICE' OR 'PAYMENTSUM'.
+      gs_fcat-cfieldname = 'CURRENCY'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_bot.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_object .
+
+  CREATE OBJECT gcl_container
+    EXPORTING
+      side      = gcl_container->dock_at_left
+      extension = 5000.
+
+  CREATE OBJECT gcl_splitter
+    EXPORTING
+      parent  = gcl_container
+      rows    = 3
+      columns = 1.
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = gcl_container_top.
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 2
+      column    = 1
+    RECEIVING
+      container = gcl_container_mid.
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 3
+      column    = 1
+    RECEIVING
+      container = gcl_container_bot.
+
+  CREATE OBJECT gcl_grid_top
+    EXPORTING
+      i_parent = gcl_container_top.
+
+  CREATE OBJECT gcl_grid_mid
+    EXPORTING
+      i_parent = gcl_container_mid.
+
+  CREATE OBJECT gcl_grid_bot
+    EXPORTING
+      i_parent = gcl_container_bot.
+
+  IF gcl_handler IS NOT BOUND.
+    gcl_handler = NEW lcl_event_handler( ).
+  ENDIF.
+
+  SET HANDLER : gcl_handler->handle_double_click FOR gcl_grid_top,
+                gcl_handler->handle_double_click FOR gcl_grid_mid.
+
+  gs_variant-report = sy-repid.
+  gs_variant-handle = 'TP'.
+
+  CALL METHOD gcl_grid_top->set_table_for_first_display
+    EXPORTING
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+      is_variant      = gs_variant
+    CHANGING
+      it_outtab       = gt_scarr
+      it_fieldcatalog = gt_fcat_top.
+
+*    CLEAR gs_layout-cwidth_opt.
+  gs_variant-handle = 'MD'.
+
+  CALL METHOD gcl_grid_mid->set_table_for_first_display
+    EXPORTING
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+      is_variant      = gs_variant
+    CHANGING
+      it_outtab       = gt_spfli
+      it_fieldcatalog = gt_fcat_mid.
+
+  gs_variant-handle = 'BO'.
+
+  CALL METHOD gcl_grid_bot->set_table_for_first_display
+    EXPORTING
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+      is_variant      = gs_variant
+    CHANGING
+      it_outtab       = gt_sflight
+      it_fieldcatalog = gt_fcat_bot.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid_top
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid_top .
+
+  CALL METHOD gcl_grid_top->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_doubl_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW
+*&      --> E_COLUMN
+*&---------------------------------------------------------------------*
+FORM handle_double_click USING ps_row TYPE lvc_s_row
+                                ps_col TYPE lvc_s_col.
+
+  READ TABLE gt_scarr INTO gs_scarr INDEX ps_row-index.
+
+  IF sy-subrc NE 0.
+    EXIT.
+  ENDIF.
+
+  CASE ps_col-fieldname.
+    WHEN 'CARRID'.
+      PERFORM get_schedule USING gs_scarr-carrid.
+      PERFORM refresh_grid_mid.
+      PERFORM refresh_grid_bot.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_schedule
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_SCARR_CARRID
+*&---------------------------------------------------------------------*
+FORM get_schedule USING pv_carrid.
+
+  CLEAR   : gs_spfli, gs_sflight.
+  REFRESH : gt_spfli, gt_sflight.
+
+  SELECT carrid connid countryfr cityfrom countryto cityto
+         fltime fltype
+    INTO CORRESPONDING FIELDS OF TABLE gt_spfli
+    FROM spfli
+   WHERE carrid = pv_carrid.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Schedule not found'.
+    EXIT.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid_mid
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid_mid .
+
+  gs_stable-row = 'X'.
+  gs_stable-col = 'X'.
+
+  CALL METHOD gcl_grid_mid->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_hotspot
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW_ID
+*&      --> E_COLUMN_ID
+*&---------------------------------------------------------------------*
+FORM handle_double_click_mid USING ps_row TYPE lvc_s_row
+                                   ps_col TYPE lvc_s_col.
+
+  READ TABLE gt_spfli INTO gs_spfli INDEX ps_row-index.
+
+  IF sy-subrc NE 0.
+    EXIT.
+  ENDIF.
+
+  CASE ps_col-fieldname.
+    WHEN 'CONNID'.
+      PERFORM get_sflight USING gs_spfli-carrid gs_spfli-connid.
+      PERFORM refresh_grid_bot.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid_bot
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid_bot .
+
+  gs_stable-row = 'X'.
+  gs_stable-col = 'X'.
+
+  CALL METHOD gcl_grid_bot->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_sflight
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_SPFLI_CARRID
+*&      --> GS_SPFLI_CONNID
+*&---------------------------------------------------------------------*
+FORM get_sflight USING pv_carrid pv_connid.
+
+  CLEAR   gs_sflight.
+  REFRESH gt_sflight.
+
+  SELECT carrid    connid     fldate price currency
+         planetype paymentsum
+    INTO CORRESPONDING FIELDS OF TABLE gt_sflight
+    FROM sflight
+   WHERE carrid = pv_carrid
+     AND connid = pv_connid.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Flight data not found'.
+    EXIT.
+  ENDIF.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

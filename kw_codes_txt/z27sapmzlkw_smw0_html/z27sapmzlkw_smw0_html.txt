@@ -1,0 +1,31 @@
+*&---------------------------------------------------------------------*
+*& Module Pool      SAPMZLKW_SMW0_HTML
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE Z27SAPMZLKW_SMW0_HTML_TOP.
+*INCLUDE sapmzlkw_smw0_html_top                  .    " Global Data
+
+INCLUDE Z27SAPMZLKW_SMW0_HTML_C01.
+*INCLUDE sapmzlkw_smw0_html_c01                  .  " Local Class
+INCLUDE Z27SAPMZLKW_SMW0_HTML_O01.
+*INCLUDE sapmzlkw_smw0_html_o01                  .  " PBO-Modules
+INCLUDE Z27SAPMZLKW_SMW0_HTML_I01.
+*INCLUDE sapmzlkw_smw0_html_i01                  .  " PAI-Modules
+INCLUDE Z27SAPMZLKW_SMW0_HTML_F01.
+*INCLUDE sapmzlkw_smw0_html_f01                  .  " FORM-Routines
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [C5] SMW0 with HTML Sample
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

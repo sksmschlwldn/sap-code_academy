@@ -1,0 +1,1243 @@
+*&---------------------------------------------------------------------*
+*& Include          ZRE2PP0002_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form set_init
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_init .
+
+  gv_mode = 'D'.
+  pa_werks = '1000'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_bom_h
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_bom_h .
+
+  DATA : lr_maktx TYPE RANGE OF zte2mm0001-maktx,
+         ls_maktx LIKE LINE OF lr_maktx.
+
+  CLEAR : gs_bom_h, ls_maktx.
+  REFRESH : gt_bom_h, lr_maktx.
+
+  IF pa_maktx IS NOT INITIAL.
+
+    ls_maktx-sign = 'I'.
+    ls_maktx-low = '*' && pa_maktx && '*'.
+    ls_maktx-option = 'CP'.
+
+    APPEND ls_maktx TO lr_maktx.
+
+  ENDIF.
+
+  SELECT a~stlnr, a~matnr, b~maktx, a~werks, a~bmeng, a~meins,
+         CASE a~status
+         WHEN 'A' THEN '활성'
+         WHEN 'I' THEN '비활성'
+         END AS stat_txt,
+         a~status
+    FROM zte2pp0002 AS a
+   INNER JOIN zte2mm0001 AS b
+      ON a~matnr = b~matnr
+   WHERE a~matnr IN @so_matnr
+     AND a~werks = @pa_werks
+     AND b~maktx IN @lr_maktx
+     AND a~stlnr IN @so_stlnr
+   ORDER BY a~stlnr
+    INTO CORRESPONDING FIELDS OF TABLE @gt_bom_h.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fcat .
+
+  gs_layout-zebra      = 'X'.
+  gs_layout-cwidth_opt = 'A'.
+  gs_layout-sel_mode   = 'D'.
+  gs_layout-stylefname = 'STYLE'.
+
+  gs_stable-col = 'X'.
+  gs_stable-row = 'X'.
+
+  PERFORM set_fcat_h USING :
+        'X'   'STLNR'   ' '   'ZTE2PP0002'    ' '   ' ',
+        'X'   'MATNR'   ' '   'ZTE2PP0002'    ' '   ' ',
+        ' '   'MAKTX'   ' '   'ZTE2MM0001'    ' '   ' ',
+        ' '   'WERKS'   ' '   'ZTE2PP0002'    ' '   ' ',
+        ' '   'BMENG'   ' '   'ZTE2PP0002'    ' '   ' ',
+        ' '   'MEINS'   ' '   'ZTE2PP0002'    ' '   ' ',
+        ' '   'STAT_TXT'   '활성 상태'  'ZTE2PP0002'    ' '   ' '.
+
+  PERFORM set_fcat_i USING :
+        'X'   'POSNR'   ' '   'ZTE2PP0003'    ' '   'X',
+        'X'   'IDNRK'   ' '   'ZTE2PP0003'    ' '   'X',
+        ' '   'MAKTX'   ' '   'ZTE2MM0001'    ' '   ' ',
+        ' '   'MENGE'   ' '   'ZTE2PP0003'    ' '   'X',
+        ' '   'MEINS'   ' '   'ZTE2PP0003'    ' '   'X'.
+
+*  PERFORM set_fcat_new_i USING :
+*          'X'   'IDNRK'   ' '   'ZTE2PP0003'    ' '   'X',
+*          ' '   'MAKTX'   ' '   'ZTE2MM0001'    ' '   ' ',
+*          ' '   'MENGE'   ' '   'ZTE2PP0003'    ' '   'X',
+*          ' '   'MEINS'   ' '   'ZTE2PP0003'    ' '   'X'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_h
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat_h  USING    pv_key pv_field pv_text pv_ref_table pv_ref_field pv_edit.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+  gs_fcat-edit      = pv_edit.
+
+  CASE pv_field.
+    WHEN 'BMENG'.
+      gs_fcat-qfieldname = 'MEINS'.
+    WHEN 'STLNR'.
+      gs_fcat-hotspot = 'X'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_h.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_i
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat_i  USING   pv_key pv_field pv_text pv_ref_table pv_ref_field pv_edit.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+  gs_fcat-edit      = pv_edit.
+
+  CASE pv_field.
+    WHEN 'MENGE'.
+      gs_fcat-qfieldname = 'MEINS'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_i.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_screen .
+
+*  CREATE OBJECT gcl_container
+*    EXPORTING
+*      container_name = 'GCL_CONTAINER'.
+*
+*  CREATE OBJECT gcl_splitter
+*    EXPORTING
+*      parent  = gcl_container
+*      rows    = 2
+*      columns = 1.
+*
+*  CALL METHOD gcl_splitter->get_container
+*    EXPORTING
+*      row       = 1
+*      column    = 1
+*    RECEIVING
+*      container = gcl_container_h.
+*
+*  CALL METHOD gcl_splitter->get_container
+*    EXPORTING
+*      row       = 2
+*      column    = 1
+*    RECEIVING
+*      container = gcl_container_i.
+
+  CREATE OBJECT gcl_container_h
+    EXPORTING
+      container_name = 'GCL_CONTAINER_H'.
+
+  CREATE OBJECT gcl_container_i
+    EXPORTING
+      container_name = 'GCL_CONTAINER_I'.
+
+*  CREATE OBJECT gcl_container_new_i
+*    EXPORTING
+*      container_name = 'GCL_CONTAINER_NEW_I'.
+
+  CREATE OBJECT gcl_grid_h
+    EXPORTING
+      i_parent = gcl_container_h.
+
+  CREATE OBJECT gcl_grid_i
+    EXPORTING
+      i_parent = gcl_container_i.
+
+*  CREATE OBJECT gcl_grid_new_i
+*    EXPORTING
+*      i_parent = gcl_container_new_i.
+
+  CREATE OBJECT gcl_container_doc_m
+    EXPORTING
+      container_name = 'GCL_CONTAINER_DOC_M'.
+
+  CREATE OBJECT gcl_document_m
+    EXPORTING
+      style            = 'ALV_TO_HTML'
+      background_color = 1
+      no_margins       = space.
+
+  PERFORM set_document_m USING gcl_document_m.
+
+  CREATE OBJECT gcl_container_doc_c
+    EXPORTING
+      container_name = 'GCL_CONTAINER_DOC_C'.
+
+  CREATE OBJECT gcl_document_c
+    EXPORTING
+      style            = 'ALV_TO_HTML'
+      background_color = 1
+      no_margins       = space.
+
+  PERFORM set_document_c USING gcl_document_c.
+
+  IF gcl_handler IS NOT BOUND.
+    CREATE OBJECT gcl_handler.
+  ENDIF.
+
+  SET HANDLER : gcl_handler->handle_hotspot FOR gcl_grid_h,
+                gcl_handler->handle_toolbar FOR ALL INSTANCES,
+                gcl_handler->handle_changed_finished FOR gcl_grid_i,
+*                gcl_handler->handle_changed_finished FOR gcl_grid_new_i,
+*                gcl_handler->handle_changed_finished FOR ALL INSTANCES,
+                gcl_handler->handle_user_command FOR gcl_grid_h,
+                gcl_handler->handle_user_command FOR gcl_grid_i.
+*                gcl_handler->handle_user_command FOR gcl_grid_new_i.
+
+  CALL METHOD gcl_grid_i->register_edit_event
+    EXPORTING
+      i_event_id = gcl_grid_i->mc_evt_modified.
+
+  gs_variant-report = sy-repid.
+  gs_variant-handle = 'HD'.
+
+  gs_layout-grid_title = 'BOM 기준정보'.
+  CALL METHOD gcl_grid_h->set_table_for_first_display
+    EXPORTING
+      i_save               = 'A'
+      i_default            = 'X'
+      is_layout            = gs_layout
+      is_variant           = gs_variant
+      it_toolbar_excluding = gt_exclude
+    CHANGING
+      it_outtab            = gt_bom_h
+      it_fieldcatalog      = gt_fcat_h.
+
+  gs_variant-handle = 'RT'.
+  gv_state = 0.
+
+  CLEAR gs_layout-grid_title .
+  CALL METHOD gcl_grid_i->set_ready_for_input
+    EXPORTING
+      i_ready_for_input = gv_state.
+
+  CALL METHOD gcl_grid_i->set_table_for_first_display
+    EXPORTING
+      i_save               = 'A'
+      i_default            = 'X'
+      is_layout            = gs_layout
+      is_variant           = gs_variant
+      it_toolbar_excluding = gt_exclude
+    CHANGING
+      it_outtab            = gt_bom_i
+      it_fieldcatalog      = gt_fcat_i.
+
+*  CALL METHOD gcl_grid_new_i->set_table_for_first_display
+*    EXPORTING
+*      i_save               = 'A'
+*      i_default            = 'X'
+*      is_layout            = gs_layout
+*      is_variant           = gs_variant
+*      it_toolbar_excluding = gt_exclude
+*    CHANGING
+*      it_outtab            = gt_bom_new_i
+*      it_fieldcatalog      = gt_fcat_new_i.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_hotspot
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW_ID
+*&      --> E_COLUMN_ID
+*&---------------------------------------------------------------------*
+FORM handle_hotspot  USING   ps_row TYPE lvc_s_row
+                            ps_col TYPE lvc_s_col.
+
+  gv_mode = 'E'.
+  PERFORM modify_screen.
+
+  READ TABLE gt_bom_h INTO gs_bom_h INDEX ps_row-index.
+
+  IF sy-subrc <> 0.
+    EXIT.
+  ENDIF.
+
+  gv_sel_bom = gs_bom_h-stlnr.
+
+  CASE ps_col-fieldname.
+    WHEN 'STLNR'.
+      PERFORM get_bom_i USING gs_bom_h-stlnr.
+      PERFORM set_style.
+      PERFORM refresh_grid_i.
+
+      CALL METHOD cl_gui_cfw=>set_new_ok_code
+        EXPORTING
+          new_code = 'GO_PAI'.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_bom_i
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_BOM_H_STLNR
+*&---------------------------------------------------------------------*
+FORM get_bom_i  USING pv_stlnr TYPE zte2pp0002-stlnr.
+
+  CLEAR   : gs_bom_i.
+  REFRESH : gt_bom_i.
+
+  SELECT a~stlnr a~posnr a~idnrk b~maktx a~menge a~meins
+    INTO CORRESPONDING FIELDS OF TABLE gt_bom_i
+    FROM zte2pp0003 AS a
+   INNER JOIN zte2mm0001 AS b
+      ON a~idnrk = b~matnr
+   WHERE a~stlnr = pv_stlnr
+   ORDER BY a~posnr.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid_i
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid_i .
+
+  CALL METHOD gcl_grid_i->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_style
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_style .
+
+  DATA : lv_tabix TYPE sy-tabix,
+         ls_style TYPE lvc_s_styl.
+
+  LOOP AT gt_bom_i INTO gs_bom_i.
+
+    lv_tabix = sy-tabix.
+
+    ls_style-fieldname = 'POSNR'.
+    ls_style-style     = cl_gui_alv_grid=>mc_style_disabled.
+
+    APPEND ls_style TO gs_bom_i-style.
+    CLEAR  ls_style.
+
+    MODIFY gt_bom_i FROM gs_bom_i INDEX lv_tabix
+    TRANSPORTING style.
+
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_toolbar_h
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_OBJECT
+*&---------------------------------------------------------------------*
+FORM handle_toolbar_h  USING  pcl_object TYPE REF TO cl_alv_event_toolbar_set.
+
+*  gs_alv_toolbar-butn_type = 3.
+*  gs_alv_toolbar-icon      = icon_dummy.
+*
+*  APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+*  CLEAR  gs_alv_toolbar.
+*
+*  gs_alv_toolbar-butn_type = 0.
+*  gs_alv_toolbar-function  = 'DELETE_BOM'.
+*  gs_alv_toolbar-icon      = icon_delete_row.
+*  gs_alv_toolbar-text      = 'BOM 삭제'.
+*  gs_alv_toolbar-quickinfo = 'Delete bom'.
+*
+*  APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+*  CLEAR  gs_alv_toolbar.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_toolbar_i
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_OBJECT
+*&---------------------------------------------------------------------*
+FORM handle_toolbar_i  USING    pcl_object TYPE REF TO cl_alv_event_toolbar_set.
+
+  " 해당 툴바 bom_i가 보여지고 있을떄만 보이게 수정
+  IF gv_sel_bom IS NOT INITIAL.
+
+    IF gv_state = 1.
+*
+*      gs_alv_toolbar-butn_type = 3.
+*      gs_alv_toolbar-icon      = icon_dummy.
+*
+*      APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+*      CLEAR  gs_alv_toolbar.
+
+      gs_alv_toolbar-butn_type = 0.
+      gs_alv_toolbar-function  = 'APPEND'.
+      gs_alv_toolbar-icon      = icon_insert_row.
+      gs_alv_toolbar-text      = '추가'.
+      gs_alv_toolbar-quickinfo = 'Create row'.
+
+      APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+      CLEAR  gs_alv_toolbar.
+
+      gs_alv_toolbar-butn_type = 0.
+      gs_alv_toolbar-function  = 'DELETE'.
+      gs_alv_toolbar-icon      = icon_delete_row.
+      gs_alv_toolbar-text      = '삭제'.
+      gs_alv_toolbar-quickinfo = 'Delete row'.
+
+
+      APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+      CLEAR  gs_alv_toolbar.
+
+    ENDIF.
+
+    gs_alv_toolbar-butn_type = 3.
+    gs_alv_toolbar-icon      = icon_dummy.
+
+    APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+    CLEAR  gs_alv_toolbar.
+
+    gs_alv_toolbar-butn_type = 0.
+    gs_alv_toolbar-function  = 'EDIT'.
+    gs_alv_toolbar-icon      = icon_toggle_display_change.
+    gs_alv_toolbar-text      = '조회/수정'.
+    gs_alv_toolbar-quickinfo = '조회/수정'.
+
+    APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+    CLEAR  gs_alv_toolbar.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_user_command
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_UCOMM
+*&---------------------------------------------------------------------*
+FORM handle_user_command  USING    pv_ucomm TYPE sy-ucomm.
+
+  CASE pv_ucomm.
+    WHEN 'APPEND'.
+      PERFORM append_bom_i.
+      PERFORM refresh_grid_i.
+
+    WHEN 'DELETE'.
+      PERFORM delete_bom_i.
+      PERFORM refresh_grid_i.
+
+    WHEN 'DELETE_BOM'.
+      PERFORM delete_bom_h.
+      PERFORM refresh_grid_i.
+      PERFORM refresh_grid_h.
+
+    WHEN 'EDIT'.
+      PERFORM edit_mode.
+      PERFORM refresh_grid_i.
+      PERFORM refresh_grid_h.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form edit_mode
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM edit_mode .
+
+  CASE gcl_grid_i->is_ready_for_input( ).
+    WHEN '1'.
+      gv_state = 0.
+    WHEN '0'.
+      gv_state = 1.
+  ENDCASE.
+
+  CALL METHOD gcl_grid_i->set_ready_for_input
+    EXPORTING
+      i_ready_for_input = gv_state.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_changed_finished
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_MODIFIED
+*&      --> ET_GOOD_CELLS
+*&---------------------------------------------------------------------*
+FORM handle_changed_finished  USING    pv_modified
+                                       pt_modi TYPE lvc_t_modi.
+
+  DATA : ls_modi  TYPE lvc_s_modi,
+         lv_maktx TYPE zte2mm0001-maktx.
+
+  CHECK pv_modified IS NOT INITIAL.
+
+  LOOP AT pt_modi INTO ls_modi.
+
+    READ TABLE gt_bom_i INTO gs_bom_i INDEX ls_modi-row_id.
+
+    IF sy-subrc <> 0.
+      CONTINUE.
+    ENDIF.
+
+    gs_bom_i-mark = 'X'.
+
+    CASE ls_modi-fieldname. " 나중에 단위필드도 막기.
+      WHEN 'IDNRK'.
+
+        SELECT SINGLE maktx
+          INTO gs_bom_i-maktx
+          FROM zte2mm0001
+         WHERE matnr = gs_bom_i-idnrk.
+
+    ENDCASE.
+
+    MODIFY gt_bom_i FROM gs_bom_i INDEX ls_modi-row_id
+    TRANSPORTING mark maktx.
+
+  ENDLOOP.
+
+  PERFORM refresh_grid_i.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form append_bom_i
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM append_bom_i .
+
+  CLEAR gs_bom_i.
+
+  gs_bom_i-mark  = 'X'.
+  gs_bom_i-stlnr = gv_sel_bom.
+
+  APPEND gs_bom_i TO gt_bom_i.
+  CLEAR gs_bom_i.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form delete_bom_h
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM delete_bom_h .
+
+  DATA : lv_cnt    TYPE i,
+         ls_del    LIKE LINE OF gt_bom_h_del,
+         lv_answer.
+
+  CALL METHOD gcl_grid_h->get_selected_rows
+    IMPORTING
+      et_index_rows = gt_row.
+
+  lv_cnt = lines( gt_row ).
+
+  IF lv_cnt < 1.
+    MESSAGE s000 WITH '먼저 행을 선택해주세요.' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  " 진짜 삭제하시겠습니까?? 팝업.
+  "  이때 해당 BOM이 사용되고있는 곳을 보여줘야함. EX. 생산 오더 등 ...
+
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar              = 'BOM 전체 삭제'         " 팝업창 제목
+      text_question         = 'BOM을 전체 삭제하시겠습니까?' " 물어볼 내용
+      text_button_1         = '예'(001)           " 버튼 1 텍스트
+      text_button_2         = '아니오'(002)       " 버튼 2 텍스트
+      display_cancel_button = ' '                 " 취소 버튼은 필요 없으니 X
+    IMPORTING
+      answer                = lv_answer           " 사용자가 뭘 눌렀는지 담는 변수
+    EXCEPTIONS
+      text_not_found        = 1
+      OTHERS                = 2.
+
+  " 사용자가 '예'를 눌렀을 때만 삭제
+  IF lv_answer = '1'.
+    SORT  gt_row BY index DESCENDING.
+
+    LOOP AT gt_row INTO gs_row.
+
+      READ TABLE gt_bom_h INTO gs_bom_h INDEX gs_row-index.
+
+      IF sy-subrc = 0.
+
+        MOVE-CORRESPONDING gs_bom_h TO ls_del.
+
+        APPEND ls_del TO gt_bom_h_del.
+        CLEAR ls_del.
+
+        DELETE gt_bom_h INDEX gs_row-index.
+        REFRESH gt_bom_i.
+
+      ENDIF.
+
+    ENDLOOP.
+
+  ELSE.
+    MESSAGE '삭제가 취소되었습니다.' TYPE 'S' DISPLAY LIKE 'W'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form delete_bom_i
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM delete_bom_i .
+
+  DATA : lv_cnt TYPE i,
+         ls_del LIKE LINE OF gt_bom_i_del.
+
+
+  CALL METHOD gcl_grid_i->get_selected_rows
+    IMPORTING
+      et_index_rows = gt_row.
+
+  lv_cnt = lines( gt_row ).
+
+  IF lv_cnt < 1.
+    MESSAGE s000 WITH '먼저 행을 선택해주세요.' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  SORT  gt_row BY index DESCENDING.
+
+  LOOP AT gt_row INTO gs_row.
+
+    READ TABLE gt_bom_i INTO gs_bom_i INDEX gs_row-index.
+
+    IF sy-subrc = 0.
+
+      MOVE-CORRESPONDING gs_bom_i TO ls_del.
+      gv_del_bom = gs_bom_i-stlnr.
+
+      APPEND ls_del TO gt_bom_i_del.
+      CLEAR ls_del.
+
+      DELETE gt_bom_i INDEX gs_row-index.
+      MESSAGE '삭제가 완료되었습니다.' TYPE 'S'.
+
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid_h
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid_h .
+
+  CALL METHOD gcl_grid_h->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form exclude_toolbar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM exclude_toolbar .
+
+  APPEND cl_gui_alv_grid=>mc_fc_check          TO gt_exclude.
+  APPEND cl_gui_alv_grid=>mc_fc_refresh        TO gt_exclude.
+  APPEND cl_gui_alv_grid=>mc_fc_loc_cut        TO gt_exclude.
+  APPEND cl_gui_alv_grid=>mc_fc_loc_copy       TO gt_exclude.
+  APPEND cl_gui_alv_grid=>mc_mb_paste          TO gt_exclude.
+  APPEND cl_gui_alv_grid=>mc_fc_loc_undo       TO gt_exclude.
+  APPEND cl_gui_alv_grid=>mc_fc_loc_insert_row TO gt_exclude.
+  APPEND cl_gui_alv_grid=>mc_fc_loc_delete_row TO gt_exclude.
+  APPEND cl_gui_alv_grid=>mc_fc_loc_copy_row   TO gt_exclude.
+  APPEND cl_gui_alv_grid=>mc_fc_loc_append_row TO gt_exclude.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form save_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM save_data .
+
+  DATA : ls_save_h TYPE zte2pp0002,
+         ls_save_i TYPE zte2pp0003,
+         lt_save_h LIKE TABLE OF ls_save_h,
+         lt_save_i LIKE TABLE OF ls_save_i,
+         lv_commit.
+
+  CLEAR : ls_save_h, ls_save_i, lv_commit.
+  REFRESH : lt_save_h, lt_save_i.
+
+  CALL METHOD gcl_grid_h->check_changed_data.
+
+  " 헤더 삭제 시 삭제
+*  IF gt_bom_h_del IS NOT INITIAL.
+*
+*    DELETE zte2pp0002 FROM TABLE gt_bom_h_del. " 헤더테이블 삭제
+*    DELETE FROM zte2pp0003 WHERE stlnr = gv_sel_bom . " 헤더테이블 삭제
+*
+*    IF sy-dbcnt > 0.
+*      lv_commit = 'X'.
+*    ENDIF.
+*
+*  ENDIF.
+
+  gs_bom_h = VALUE #( BASE gs_bom_h
+                      aenam = sy-uname
+                      aedat = sy-datum
+                      aezet = sy-uzeit
+  ).
+
+  MOVE-CORRESPONDING gs_bom_h TO ls_save_h.
+
+  MODIFY zte2pp0002 FROM ls_save_h.
+
+  IF sy-dbcnt > 0.
+    lv_commit = 'X'.
+  ENDIF.
+
+  " 아이템 삭제시 삭제
+  IF gt_bom_i_del IS NOT INITIAL.
+
+    DELETE zte2pp0003 FROM TABLE gt_bom_i_del.
+
+    IF sy-dbcnt > 0.
+      lv_commit = 'X'.
+    ENDIF.
+
+  ENDIF.
+
+  " 아이템 수정시 및 추가시 저장
+  LOOP AT gt_bom_i INTO gs_bom_i WHERE mark = 'X'.
+
+    MOVE-CORRESPONDING gs_bom_i TO ls_save_i.
+
+    IF gs_bom_i-erdat IS INITIAL.
+      ls_save_i-erdat = sy-datum.
+      ls_save_i-erzet = sy-uzeit.
+      ls_save_i-ernam = sy-uname.
+
+    ELSE.
+      ls_save_i-aedat = sy-datum.
+      ls_save_i-aezet = sy-uzeit.
+      ls_save_i-aenam = sy-uname.
+
+    ENDIF.
+
+    APPEND ls_save_i TO lt_save_i.
+    CLEAR  ls_save_i.
+
+  ENDLOOP.
+
+  IF lt_save_i IS NOT INITIAL.
+
+    MODIFY zte2pp0003 FROM TABLE lt_save_i.
+
+    IF sy-dbcnt > 0.
+      lv_commit = 'X'.
+    ENDIF.
+
+  ENDIF.
+
+  IF lv_commit IS NOT INITIAL.
+    COMMIT WORK AND WAIT.
+    REFRESH gt_bom_i_del.
+    PERFORM clear_mark.
+
+    MESSAGE s000 WITH 'BOM이 성공적으로 변경되었습니다.'.
+
+  ELSE.
+    MESSAGE s000 WITH '변경된 BOM이 없습니다.' DISPLAY LIKE 'W'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form clear_mark
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM clear_mark .
+
+  DATA : lv_tabix TYPE sy-tabix.
+
+  LOOP AT gt_bom_i INTO gs_bom_i WHERE mark = 'X'.
+
+    lv_tabix = sy-tabix.
+
+    CLEAR gs_bom_i-mark.
+
+    MODIFY gt_bom_i FROM gs_bom_i INDEX lv_tabix
+    TRANSPORTING mark.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_screen_c
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_screen_c .
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form modify_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM modify_screen .
+
+  LOOP AT SCREEN.
+
+    IF gv_mode = 'D'.
+      IF screen-group1 = 'BOM'.
+        screen-input = 0.
+      ELSEIF gv_mode = 'E'.
+        screen-input = 1.
+      ENDIF.
+    ENDIF.
+
+    MODIFY SCREEN.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_document_m
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GCL_DOCUMENT_M
+*&---------------------------------------------------------------------*
+FORM set_document_m  USING    pcl_document TYPE REF TO cl_dd_document.
+
+  DATA : lcl_table TYPE REF TO cl_dd_table_element,
+         lcl_col1  TYPE REF TO cl_dd_area,
+         lcl_col2  TYPE REF TO cl_dd_area.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text         = '사용 방법'
+      sap_fontsize = cl_dd_document=>large
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background_inv.
+
+  CALL METHOD pcl_document->new_line.
+  CALL METHOD pcl_document->new_line.
+
+  " 생성화면 사용 방법
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text = '1. BOM 기준정보를 입력합니다.'.
+
+  CALL METHOD pcl_document->new_line.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text = '2. 우측 항목 영역에서 BOM 구성품을 한 건씩 추가합니다.'.
+
+  CALL METHOD pcl_document->new_line.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text = '3. 모든 항목 입력 후 저장 버튼을 눌러 BOM을 생성합니다.'.
+
+  CALL METHOD pcl_document->merge_document.
+
+  CALL METHOD pcl_document->display_document
+    EXPORTING
+      reuse_control      = 'X'
+      parent             = gcl_container_doc_m
+    EXCEPTIONS
+      html_display_error = 1.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_document_c
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GCL_DOCUMENT_C
+*&---------------------------------------------------------------------*
+FORM set_document_c  USING   pcl_document TYPE REF TO cl_dd_document.
+
+  DATA : lcl_table TYPE REF TO cl_dd_table_element,
+         lcl_col1  TYPE REF TO cl_dd_area,
+         lcl_col2  TYPE REF TO cl_dd_area.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text         = '사용 방법'
+      sap_fontsize = cl_dd_document=>large
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background_inv.
+
+  CALL METHOD pcl_document->new_line.
+  CALL METHOD pcl_document->new_line.
+
+  " 수정화면 사용 방법
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text = '1. 조회 목록에서 BOM을 클릭하면 기준정보가 입력 영역에 표시됩니다.'.
+
+  CALL METHOD pcl_document->new_line.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text = '2. 조회/수정 토글 버튼을 눌러 수정 모드로 전환한 후 기준정보를 변경합니다.'.
+
+  CALL METHOD pcl_document->new_line.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text = '3. 우측 ALV에서 BOM 항목을 추가, 삭제 또는 수정합니다.'.
+
+  CALL METHOD pcl_document->new_line.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text = '4. 변경 내용을 확인한 뒤 저장 버튼을 눌러 BOM 정보를 반영합니다.'.
+
+  CALL METHOD pcl_document->merge_document.
+
+  CALL METHOD pcl_document->display_document
+    EXPORTING
+      reuse_control      = 'X'
+      parent             = gcl_container_doc_c
+    EXCEPTIONS
+      html_display_error = 1.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form modify_sel_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM modify_sel_screen .
+
+  LOOP AT SCREEN.
+    IF screen-group1 = 'MOD'.
+
+      IF pa_modi = 'X'.
+        screen-active = 1.
+      ELSE.
+        screen-active = 0.
+      ENDIF.
+
+    ENDIF.
+
+    MODIFY SCREEN.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form save_new_bom
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM save_new_bom .
+
+  DATA : ls_save_h TYPE zte2pp0002,
+         ls_save_i TYPE zte2pp0003,
+         lt_save_h LIKE TABLE OF ls_save_h,
+         lt_save_i LIKE TABLE OF ls_save_i,
+         lv_commit,
+         lv_exists TYPE abap_bool.
+
+  CLEAR : ls_save_h, ls_save_i, lv_commit.
+  REFRESH : lt_save_h, lt_save_i.
+
+  CALL METHOD gcl_grid_h->check_changed_data.
+
+  " 필수값 체크
+  IF gs_bom_new_h-stlnr IS INITIAL.
+    MESSAGE s000 WITH 'BOM 번호를 입력하세요.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  IF gs_bom_new_h-matnr IS INITIAL.
+    MESSAGE s000 WITH '자재번호를 입력하세요.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  " 이미 존재하는 BOM 번호인지 체크
+  SELECT SINGLE @abap_true
+    FROM zte2pp0002
+    WHERE stlnr = @gs_bom_new_h-stlnr
+    INTO @lv_exists.
+
+  IF lv_exists = abap_true.
+    MESSAGE s000 WITH '이미 존재하는 BOM 번호입니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  " 헤더 저장
+  MOVE-CORRESPONDING gs_bom_new_h TO ls_save_h.
+
+  ls_save_h = VALUE #( BASE ls_save_h
+                         ernam = sy-uname
+                         erdat = sy-datum
+                         erzet = sy-uzeit ).
+
+  INSERT zte2pp0002 FROM ls_save_h.
+
+  IF sy-subrc <> 0.
+    ROLLBACK WORK.
+    MESSAGE s000 WITH 'BOM 헤더 저장 중 오류가 발생했습니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  " 아이템 저장
+  LOOP AT gt_bom_i INTO gs_bom_i.
+
+    IF gs_bom_i-idnrk IS INITIAL.
+      CONTINUE.
+    ENDIF.
+
+    MOVE-CORRESPONDING gs_bom_i TO ls_save_i.
+
+    ls_save_i-stlnr = gs_bom_new_h-stlnr.
+    ls_save_i-erdat = sy-datum.
+    ls_save_i-erzet = sy-uzeit.
+    ls_save_i-ernam = sy-uname.
+
+    APPEND ls_save_i TO lt_save_i.
+
+  ENDLOOP.
+
+  IF lt_save_i IS INITIAL.
+    ROLLBACK WORK.
+    MESSAGE s000 WITH 'BOM 아이템을 입력하세요.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  INSERT zte2pp0003 FROM TABLE lt_save_i.
+
+  IF sy-subrc <> 0.
+    ROLLBACK WORK.
+    MESSAGE s000 WITH 'BOM 아이템 저장 중 오류가 발생했습니다.' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.
+
+  COMMIT WORK AND WAIT.
+
+  MESSAGE s000 WITH 'BOM이 성공적으로 생성되었습니다.'.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f4_matnr
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f4_matnr .
+
+  DATA : BEGIN OF ls_matnr,
+           matnr TYPE zte2pp0002-matnr,
+           maktx TYPE zte2mm0001-maktx,
+         END OF ls_matnr,
+
+         lt_matnr  LIKE TABLE OF ls_matnr,
+
+         lt_return TYPE TABLE OF ddshretval,
+         ls_return TYPE ddshretval,
+         lt_dynp   TYPE TABLE OF dynpread,
+         ls_dynp   TYPE dynpread.
+
+  SELECT matnr, maktx
+    FROM zte2mm0001
+   WHERE mtart = 'FERT'
+    INTO CORRESPONDING FIELDS OF TABLE @lt_matnr.
+
+CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'MATNR'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'GS_BOM_NEW_H'
+      window_title = '생산품 목록'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_matnr
+      return_tab   = lt_return.
+
+  IF lt_return[] IS NOT INITIAL.
+
+    READ TABLE lt_return INTO ls_return INDEX 1.
+
+    IF sy-subrc = 0.
+
+      READ TABLE lt_matnr INTO ls_matnr WITH KEY matnr = ls_return-fieldval.
+
+      IF sy-subrc = 0.
+        CLEAR   ls_dynp.
+
+        ls_dynp-fieldname = 'GS_BOM_NEW_H-MATNR'.
+        ls_dynp-fieldvalue = ls_return-fieldval.
+        APPEND ls_dynp TO lt_dynp.
+        CLEAR ls_dynp.
+
+        ls_dynp-fieldname = 'GS_BOM_NEW_H-MAKTX'.
+        ls_dynp-fieldvalue = ls_matnr-maktx.
+        APPEND ls_dynp TO lt_dynp.
+        CLEAR ls_dynp.
+
+        CALL FUNCTION 'DYNP_VALUES_UPDATE'
+          EXPORTING
+            dyname               = sy-repid
+            dynumb               = sy-dynnr
+          TABLES
+            dynpfields           = lt_dynp
+          EXCEPTIONS
+            invalid_abapworkarea = 1
+            invalid_dynprofield  = 2
+            invalid_dynproname   = 3
+            invalid_dynpronummer = 4
+            invalid_request      = 5
+            no_fielddescription  = 6
+            undefind_error       = 7
+            OTHERS               = 8.
+
+      ENDIF.
+
+      gs_bom_new_h-matnr = ls_matnr-matnr.
+      gs_bom_new_h-maktx = ls_matnr-maktx.
+
+    ENDIF.
+
+  ENDIF.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

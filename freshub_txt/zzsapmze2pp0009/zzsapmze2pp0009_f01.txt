@@ -1,0 +1,1908 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZE2PP0009_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form get_order
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_order .
+
+  DATA : lr_apstat TYPE RANGE OF zte2pp0009-apstat, " 승인 상태
+         ls_apstat LIKE LINE OF lr_apstat,
+
+         lr_gstrp  TYPE RANGE OF zte2pp0009-gstrp, " 날짜
+         ls_gstrp  LIKE LINE OF lr_gstrp,
+
+         lr_plnbez TYPE RANGE OF zte2pp0009-plnbez, " 자재 번호
+         ls_plnbez LIKE LINE OF  lr_plnbez,
+
+         lr_auart  TYPE RANGE OF zte2pp0009-auart,
+         ls_auart  LIKE LINE OF lr_auart,
+
+         lv_subrc  TYPE sy-subrc.
+
+  REFRESH gt_order.
+
+  " 승인상태 조건
+  IF gs_search-apstat IS NOT INITIAL.
+    ls_apstat-sign   = 'I'.
+    ls_apstat-option = 'EQ'.
+    ls_apstat-low    = gs_search-apstat.
+
+    APPEND ls_apstat TO lr_apstat.
+    CLEAR  ls_apstat.
+
+  ENDIF.
+
+  " 날짜 조건
+  IF gs_search-gstrp_low IS NOT INITIAL.
+
+    ls_gstrp-sign   = 'I'.
+    ls_gstrp-low    = gs_search-gstrp_low.
+
+    IF gs_search-gstrp_high IS INITIAL.
+      ls_gstrp-option = 'GE'.
+    ELSE.
+      ls_gstrp-option = 'BT'.
+      ls_gstrp-high   = gs_search-gstrp_high.
+    ENDIF.
+
+    APPEND ls_gstrp TO lr_gstrp.
+    CLEAR  ls_gstrp.
+
+  ENDIF.
+
+  IF gs_search-matnr IS NOT INITIAL.
+
+    PERFORM check_valid_matnr USING    gs_search-matnr
+                              CHANGING lv_subrc.
+
+    IF lv_subrc <> 0.
+      EXIT.
+    ENDIF.
+
+    ls_plnbez-sign   = 'I'.
+    ls_plnbez-option = 'EQ'.
+    ls_plnbez-low    = gs_search-matnr.
+
+    APPEND ls_plnbez TO lr_plnbez.
+    CLEAR  ls_plnbez.
+
+  ENDIF.
+
+  " 오더구분 조건 (라디오버튼)
+  CASE 'X'.
+    WHEN gv_act_mto. "판매오더
+      ls_auart-sign   = 'I'.
+      ls_auart-option = 'EQ'.
+      ls_auart-low    = 'ZSOR'.
+
+      APPEND ls_auart TO lr_auart.
+      CLEAR  ls_auart.
+
+    WHEN gv_act_mts. "계획오더
+      ls_auart-sign   = 'I'.
+      ls_auart-option = 'EQ'.
+      ls_auart-low    = 'ZFCT'.
+
+      APPEND ls_auart TO lr_auart.
+      CLEAR  ls_auart.
+
+    WHEN gv_act_stk. " 부족 재고
+      ls_auart-sign   = 'I'.
+      ls_auart-option = 'EQ'.
+      ls_auart-low    = 'ZSTK'.
+
+      APPEND ls_auart TO lr_auart.
+      CLEAR  ls_auart.
+
+    WHEN OTHERS.
+      REFRESH lr_auart.
+
+  ENDCASE.
+
+  SELECT a~aufnr, a~auart, a~plnbez, a~gamng ,a~meins,
+         a~gstrp, a~gltrp, a~plnum, a~plpos, a~vbeln, a~posnr, a~apstat,
+        CASE a~auart
+          WHEN 'ZSOR' THEN '주문 생산'
+          WHEN 'ZFCT' THEN '계획 생산'
+          WHEN 'ZSTK' THEN '보충 생산'
+          WHEN 'ZCUS' THEN '이월 생산'
+          END AS auart_txt,
+        CASE a~apstat
+          WHEN '1' THEN '승인 하기'
+          WHEN '2' THEN '승인 완료'
+          ELSE '반려'
+          END AS stat_txt,
+          CASE a~apstat
+          WHEN '1' THEN '@5D@'
+          WHEN '2' THEN '@5B@'
+          ELSE '@5C@'
+          END AS stat_icon,
+         b~maktx
+    FROM zte2pp0009 AS a
+   INNER JOIN zte2mm0001 AS b
+      ON a~plnbez = b~matnr
+    INTO CORRESPONDING FIELDS OF TABLE @gt_order
+   WHERE a~apstat IN @lr_apstat
+     AND a~gstrp  IN @lr_gstrp
+     AND a~plnbez IN @lr_plnbez
+     AND a~auart  IN @lr_auart
+   ORDER BY a~gstrp. " 생산 계획일이 빠른 날짜를 상단에 표시
+
+  IF sy-subrc <> 0.
+    MESSAGE : s000 WITH '해당 조건의 생산 오더가 존재하지 않습니다.' DISPLAY LIKE 'E'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fcat_layout .
+
+  gs_layout-zebra      = 'X'.
+  gs_layout-cwidth_opt = 'A'.
+  gs_layout-sel_mode   = 'D'.
+  gs_layout-stylefname = 'STYLE'.
+  gs_layout-ctab_fname = 'COLOR'.
+
+  gs_stable-col = 'X'.
+  gs_stable-row = 'X'.
+
+  PERFORM set_fcat_order USING :
+        'X'   'STAT_ICON'   '상태'        ' '   ' ',
+        'X'   'AUFNR'       ' '           'ZTE2PP0009'   ' ',
+        ' '   'AUART_TXT'   '오더 유형'   ' '   ' ',
+        ' '   'PLNBEZ'      ' '           'ZTE2PP0009'   ' ',
+        ' '   'MAKTX'       ' '           'ZTE2MM0001'   ' ',
+        ' '   'GAMNG'       ' '           'ZTE2PP0009'   ' ',
+        ' '   'MEINS'       ' '           'ZTE2PP0009'   ' ',
+        ' '   'GSTRP'       ' '           'ZTE2PP0009'   ' ',
+        ' '   'GLTRP'       ' '           'ZTE2PP0009'   ' ',
+        ' '   'PLNUM'       ' '           'ZTE2PP0009'   ' ',
+        ' '   'PLPOS'       ' '           'ZTE2PP0009'   ' ',
+        ' '   'VBELN'       ' '           'ZTE2PP0009'   ' ',
+        ' '   'POSNR'       ' '           'ZTE2PP0009'   ' ',
+        ' '   'STAT_TXT'    '승인 상태'   ' '   ' '.
+
+  PERFORM set_fcat_mrp USING :
+        'X'   'STATUS'       '상태'               ' '    ' ',
+        'X'   'MATNR'        ' '                  'ZTE2PP0003'    'IDNRK',     " 자재번호
+        ' '   'MAKTX'        ' '                  'ZTE2MM0001'     ' ',        " 자재명
+        ' '   'MENGE'        '단위 소요량'        'ZTE2PP0003'     ' ',        " 기준수량
+        ' '   'REQ_QTY_G'    '총 소요량(G/EA)'    'ZTE2PP0003'     'MENGE', " 소요량
+        ' '   'AVAIL_QTY_G'  '가용재고(G/EA)'     'ZTE2PP0003'     'MENGE', "가용재고
+        ' '   'SHORTAGE_G'   '부족재고(G/EA)'     'ZTE2PP0003'     'MENGE', "부족재고
+        ' '   'MEINS'        ' '                  'ZTE2PP0003'     ' ',     " 기준단위
+        ' '   'STATUS_TXT'   '가용상태'           ' '     ' ', "가용상태
+        ' '   'REQ_QTY_U'    '총 소요 재고'       'ZTE2PP0003'     'MENGE', " 소요량
+        ' '   'AVAIL_QTY_U'  '가용재고'           'ZTE2PP0003'     'MENGE', "가용재고
+        ' '   'SHORTAGE_U'   '부족재고'           'ZTE2PP0003'     'MENGE', "부족재고
+        ' '   'UNIT_MEINS'   '재고 단위'          'ZTE2PP0003'     ' '.   " 기준단위
+
+
+
+  PERFORM set_fcat_rou USING :
+        'X'   'VORNR'      ' '                'ZTE2PP0005'    ' ',
+        ' '   'KTEXT'      ' '                'ZTE2PP0001'    ' ',
+        ' '   'LTXA1'      ' '                'ZTE2PP0005'    ' ',
+        ' '   'VGW02'      ' '                'ZTE2PP0005'    ' ',
+        ' '   'REQ_TIME'   '총 소요시간'      ' '    ' ',
+        ' '   'VGE02'      ' '                'ZTE2PP0005'    ' ',
+        ' '   'BMSCH'      '기준 수량'        'ZTE2PP0005'    ' ',
+        ' '   'MEINS'      ' '                'ZTE2PP0005'    ' '.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_order
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat_order  USING   pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'GAMNG'.
+      gs_fcat-qfieldname = 'MEINS'.
+
+*    WHEN 'AUFNR'.
+*      gs_fcat-hotspot = 'X'.
+
+    WHEN 'STAT_ICON'.
+      gs_fcat-icon = 'X'.
+
+    WHEN 'STAT_TXT'.
+      gs_fcat-just = 'C'.
+
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_order.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_mrp
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat_mrp  USING   pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'MENGE' OR 'SHORTAGE_G'.
+      gs_fcat-qfieldname = 'MEINS'.
+
+    WHEN 'MENGE' OR 'REQ_QTY_U' OR 'AVAIL_QTY_U' OR 'SHORTAGE_U'.
+      gs_fcat-qfieldname = 'UNIT_MEINS'.
+
+    WHEN 'STATUS'.
+      gs_fcat-icon = 'X'.
+
+    WHEN 'REQ_QTY_G' OR 'AVAIL_QTY_G'.
+      gs_fcat-qfieldname = 'MEINS'.
+      gs_fcat-emphasize = 'C300'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_mrp.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_rou
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat_rou  USING    pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  CASE pv_field.
+    WHEN 'VGW02' OR 'REQ_TIME'.
+      gs_fcat-qfieldname = 'VGE02'.
+
+    WHEN 'BMSCH'.
+      gs_fcat-qfieldname = 'MEINS'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat_rou.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_object
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_object .
+
+  CREATE OBJECT gcl_container_order
+    EXPORTING
+      container_name = 'GCL_CONTAINER_ORDER'.
+
+  CREATE OBJECT gcl_grid_order
+    EXPORTING
+      i_parent = gcl_container_order.
+
+  CREATE OBJECT gcl_container_mrp
+    EXPORTING
+      container_name = 'GCL_CONTAINER_MRP'.
+
+  CREATE OBJECT gcl_grid_mrp
+    EXPORTING
+      i_parent = gcl_container_mrp.
+
+  CREATE OBJECT gcl_container_rou
+    EXPORTING
+      container_name = 'GCL_CONTAINER_ROU'.
+
+  CREATE OBJECT gcl_grid_rou
+    EXPORTING
+      i_parent = gcl_container_rou.
+
+  CREATE OBJECT gcl_container_doc
+    EXPORTING
+      container_name = 'GCL_CONTAINER_DOC'.
+
+  CREATE OBJECT gcl_splitter
+    EXPORTING
+      parent  = gcl_container_doc
+      rows    = 1
+      columns = 2.
+
+  CALL METHOD gcl_splitter->set_column_width
+    EXPORTING
+      id    = 1      " 왼쪽 칸 번호
+      width = 30.    " 퍼센트(%) 단위
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = gcl_container_lf.
+
+  CREATE OBJECT gcl_document_lf
+    EXPORTING
+      style            = 'ALV_TO_HTML'
+      background_color = 1
+      no_margins       = space.
+
+  PERFORM set_document USING gcl_document_lf.
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 1
+      column    = 2
+    RECEIVING
+      container = gcl_container_rg.
+
+  CREATE OBJECT gcl_document_rg
+    EXPORTING
+      style            = 'ALV_TO_HTML'
+      background_color = 1
+      no_margins       = space.
+
+  PERFORM set_document_2 USING gcl_document_rg.
+
+  gs_variant-report = sy-repid.
+
+  IF gcl_handler IS INITIAL.
+    CREATE OBJECT gcl_handler.
+  ENDIF.
+
+  SET HANDLER : gcl_handler->handle_hotspot      FOR gcl_grid_order,
+                gcl_handler->handle_toolbar      FOR gcl_grid_order,
+                gcl_handler->handle_user_command FOR gcl_grid_order,
+                gcl_handler->handle_button_click FOR gcl_grid_order.
+
+  CALL METHOD gcl_grid_order->set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_order
+      it_fieldcatalog = gt_fcat_order.
+
+  CALL METHOD gcl_grid_mrp->set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_mrp
+      it_fieldcatalog = gt_fcat_mrp.
+
+  CALL METHOD gcl_grid_rou->set_table_for_first_display
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_routing
+      it_fieldcatalog = gt_fcat_rou.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_hotspot
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW_ID
+*&      --> E_COLUMN_ID
+*&---------------------------------------------------------------------*
+FORM handle_hotspot  USING  ps_row TYPE lvc_s_row
+                            ps_col TYPE lvc_s_col.
+
+  READ TABLE gt_order INTO gs_order INDEX ps_row-index.
+
+  IF sy-subrc <> 0.
+    EXIT.
+  ENDIF.
+
+  CASE ps_col-fieldname.
+    WHEN 'AUFNR'.
+      PERFORM get_mat_req USING gs_order-plnbez
+                                gs_order-gamng
+                                gs_order-gstrp.
+      PERFORM set_color_mrp.
+      PERFORM refresh_grid_mrp.
+      PERFORM refresh_grid_rou.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_toolbar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_OBJECT
+*&---------------------------------------------------------------------*
+FORM handle_toolbar  USING  pcl_object TYPE REF TO cl_alv_event_toolbar_set.
+
+*  gs_alv_toolbar-butn_type = 3.
+*  gs_alv_toolbar-icon      = icon_dummy.
+*
+*  APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+*  CLEAR  gs_alv_toolbar.
+*
+*  gs_alv_toolbar-butn_type = 0.
+*  gs_alv_toolbar-function  = 'RELEASE'.
+*  gs_alv_toolbar-icon      = icon_release.
+*  gs_alv_toolbar-text      = '승인'.
+*  gs_alv_toolbar-quickinfo = '승인'.
+*
+*  APPEND gs_alv_toolbar TO pcl_object->mt_toolbar.
+*  CLEAR  gs_alv_toolbar.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_user_command
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_UCOMM
+*&---------------------------------------------------------------------*
+FORM handle_user_command  USING   pv_ucomm TYPE sy-ucomm.
+
+*  CASE pv_ucomm.
+*    WHEN 'RELEASE'.
+*  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_mat_req
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GS_ORDER_MATNR
+*&---------------------------------------------------------------------*
+FORM get_mat_req  USING pv_matnr TYPE zte2pp0002-matnr
+                        pv_gamng TYPE zte2pp0009-gamng
+                        pv_gstrp TYPE zte2pp0009-gstrp.
+
+  DATA : lv_vfdat TYPE zte2pp0009-gstrp,
+         lv_mhdhb TYPE zte2mm0001-mhdhb.
+
+  SELECT SINGLE mhdhb
+    FROM zte2mm0001
+   WHERE matnr = @pv_matnr
+    INTO @lv_mhdhb.
+
+  lv_vfdat = pv_gstrp + lv_mhdhb + 2.
+
+  REFRESH : gt_mrp, gt_routing.
+
+  SELECT matnr, maktx, menge, meins, unit_meins,
+         req_qty_u, req_qty_g, avail_qty_u, avail_qty_g, shortage_u, shortage_g, status, status_txt
+    FROM zcds_e2_pp_0003( p_matnr = @pv_matnr,
+                          p_gamng = @pv_gamng,
+                          p_gstrp = @lv_vfdat )
+    INTO CORRESPONDING FIELDS OF TABLE @gt_mrp
+    ORDER BY matnr.
+
+  IF sy-subrc <> 0 .
+    MESSAGE s000 WITH '생산품의 BOM 이 정의되지 않았습니다' DISPLAY LIKE 'E'..
+    EXIT.
+  ENDIF.
+
+  SELECT vornr, ktext, ltxa1,
+       " CDS의 FLTP 필드를 여기서 바로 DEC로 변환
+      CAST( req_time AS DEC( 13, 2 ) ) AS req_time,
+       vgw02, vge02, bmsch, meins
+  FROM zcds_e2_pp_0004( p_matnr = @pv_matnr, p_gamng = @pv_gamng )
+  INTO CORRESPONDING FIELDS OF TABLE @gt_routing
+  ORDER BY vornr.
+
+  IF sy-subrc <> 0 .
+    MESSAGE s000 WITH '생산품의 공정이 정의되지 않았습니다' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid_mrp
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid_mrp .
+
+  CALL METHOD gcl_grid_mrp->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid_rou
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid_rou .
+
+  CALL METHOD gcl_grid_rou->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_document
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GCL_DOCUMENT_DOC
+*&---------------------------------------------------------------------*
+FORM set_document  USING    pcl_document TYPE REF TO cl_dd_document.
+
+  DATA : lcl_table   TYPE REF TO cl_dd_table_element,
+         lcl_col1    TYPE REF TO cl_dd_area,
+         lcl_col2    TYPE REF TO cl_dd_area,
+         lcl_col3    TYPE REF TO cl_dd_area,
+         lcl_col4    TYPE REF TO cl_dd_area,
+
+         lv_text     TYPE sdydo_text_element,
+
+         lv_wait_cnt TYPE i,
+         lv_appr_cnt TYPE i,
+         lv_rejt_cnt TYPE i.
+
+  CLEAR : lv_wait_cnt, lv_appr_cnt, lv_rejt_cnt, lv_text.
+
+  LOOP AT gt_order INTO gs_order.
+
+    CASE gs_order-apstat.
+      WHEN '1'.
+        lv_wait_cnt += 1. " 대기
+      WHEN '2'.
+        lv_appr_cnt += 1. " 승인
+      WHEN '3'.
+        lv_rejt_cnt += 1. " 반려
+    ENDCASE.
+
+  ENDLOOP.
+
+  lv_text = '생산오더 승인 상태'.
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text         = lv_text
+      sap_fontsize = cl_dd_document=>large
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background_inv.
+
+  CALL METHOD pcl_document->new_line.
+  CALL METHOD pcl_document->new_line.
+
+  CALL METHOD pcl_document->add_table
+    EXPORTING
+      no_of_columns               = 4
+      cell_background_transparent = 'X'
+      with_heading                = space
+      border                      = '0'
+    IMPORTING
+      table                       = lcl_table.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '20'
+    IMPORTING
+      column = lcl_col1.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '70'
+    IMPORTING
+      column = lcl_col2.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '10'
+    IMPORTING
+      column = lcl_col3.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '20'
+    IMPORTING
+      column = lcl_col4.
+
+  CALL METHOD lcl_table->new_row.
+
+  CALL METHOD lcl_col1->add_icon
+    EXPORTING
+      sap_icon = 'ICON_LED_YELLOW'.
+
+  lv_text = '대기:  '.
+  CALL METHOD lcl_col2->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong.
+
+
+  lv_text = lv_wait_cnt.
+  CALL METHOD lcl_col3->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong.
+
+  lv_text = '건'.
+  CALL METHOD lcl_col4->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong.
+
+  CALL METHOD lcl_table->new_row.
+
+  CALL METHOD lcl_col1->add_icon
+    EXPORTING
+      sap_icon = 'ICON_LED_GREEN'.
+
+  lv_text = '승인: ' .
+  CALL METHOD lcl_col2->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong.
+
+
+  lv_text = lv_appr_cnt.
+  CALL METHOD lcl_col3->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong.
+
+  lv_text = '건'.
+  CALL METHOD lcl_col4->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong.
+
+  CALL METHOD lcl_table->new_row.
+
+  CALL METHOD lcl_col1->add_icon
+    EXPORTING
+      sap_icon = 'ICON_LED_RED'.
+
+  lv_text = '반려: ' .
+  CALL METHOD lcl_col2->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong.
+
+  lv_text = lv_rejt_cnt.
+  CALL METHOD lcl_col3->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong.
+
+  lv_text = '건'.
+  CALL METHOD lcl_col4->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong.
+
+  CALL METHOD pcl_document->merge_document.
+
+  CALL METHOD pcl_document->display_document
+    EXPORTING
+      reuse_control      = 'X'
+      parent             = gcl_container_lf
+    EXCEPTIONS
+      html_display_error = 1.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form set_document_2
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GCL_DOCUMENT_RG
+*&---------------------------------------------------------------------*
+FORM set_document_2  USING   pcl_document TYPE REF TO cl_dd_document.
+
+  DATA : lcl_table TYPE REF TO cl_dd_table_element,
+         lcl_col1  TYPE REF TO cl_dd_area,
+         lcl_col2  TYPE REF TO cl_dd_area,
+         lcl_col3  TYPE REF TO cl_dd_area,
+
+         lv_text   TYPE sdydo_text_element.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text         = '화면 사용 설명서'
+      sap_fontsize = cl_dd_document=>large
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background_inv.
+
+  CALL METHOD pcl_document->new_line.
+  CALL METHOD pcl_document->new_line.
+
+  CALL METHOD pcl_document->add_table
+    EXPORTING
+      no_of_columns               = 2
+      cell_background_transparent = 'X'
+      with_heading                = space
+      border                      = '0'
+    IMPORTING
+      table                       = lcl_table.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '20'
+    IMPORTING
+      column = lcl_col1.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '320'
+    IMPORTING
+      column = lcl_col2.
+
+  CALL METHOD lcl_col1->add_icon
+    EXPORTING
+      sap_icon = 'ICON_DATE'.
+
+  lv_text = '원활한 생산을 위해 조회일(오늘) 이후 예정된 대기 오더가 기본 조회됩니다.' .
+  CALL METHOD lcl_col2->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>medium.
+
+  CALL METHOD lcl_table->new_row.
+
+  CALL METHOD lcl_col1->add_icon
+    EXPORTING
+      sap_icon = 'ICON_SELECT_ALL'.
+
+  lv_text = ' 생산 오더는 한 번에 한 건씩 승인 처리됩니다.' .
+  CALL METHOD lcl_col2->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>medium.
+
+
+  CALL METHOD lcl_table->new_row.
+
+  CALL METHOD lcl_col1->add_icon
+    EXPORTING
+      sap_icon = 'ICON_DISPLAY'.
+
+  lv_text = ' 상단 오더 클릭시, 하단에서 생산예정일의 자재 소요량을 확인할 수 있습니다.' .
+  CALL METHOD lcl_col2->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>medium.
+
+  CALL METHOD lcl_table->new_row.
+  lv_text = ' ( 현재 대기중인 오더 건에서만 확인 가능합니다. )' .
+  CALL METHOD lcl_col2->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>medium.
+
+  CALL METHOD lcl_table->new_row.
+
+  CALL METHOD lcl_col1->add_icon
+    EXPORTING
+      sap_icon = 'ICON_CREATE_TEXT'.
+
+  lv_text = ' 승인 시 자재가 부족하면 구매 요청을 생성 할 수 있습니다.' .
+  CALL METHOD lcl_col2->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>medium.
+
+
+  CALL METHOD pcl_document->merge_document.
+
+  CALL METHOD pcl_document->display_document
+    EXPORTING
+      reuse_control      = 'X'
+      parent             = gcl_container_rg
+    EXCEPTIONS
+      html_display_error = 1.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_grid_order
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_grid_order .
+
+  CALL METHOD gcl_grid_order->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f4_matnr_select
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f4_matnr_select .
+
+  DATA : BEGIN OF ls_data,
+           matnr TYPE zte2mm0001-matnr,
+           maktx TYPE zte2mm0001-maktx,
+         END OF ls_data,
+
+         lt_data LIKE TABLE OF ls_data.
+
+  SELECT matnr maktx
+    INTO CORRESPONDING FIELDS OF TABLE lt_data
+    FROM zte2mm0001
+   WHERE mtart = 'FERT'.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'MATNR'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'GS_SEARCH-MATNR'
+      window_title = 'Material Name'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_data.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_color_mrp
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_color_mrp .
+
+  DATA : lv_tabix TYPE sy-tabix,
+         ls_color TYPE lvc_s_scol.
+
+  LOOP AT gt_mrp INTO gs_mrp.
+
+    lv_tabix = sy-tabix.
+
+
+    CASE gs_mrp-status_txt.
+      WHEN '투입 불가'.
+        ls_color-nokeycol  = 'X'.
+        ls_color-color-col = 6.
+        ls_color-color-int = 0. " 이거순서바뀌면안댐 ㅠ
+        ls_color-color-inv = 0.
+
+        APPEND ls_color TO gs_mrp-color.
+        CLEAR  ls_color.
+    ENDCASE.
+
+    MODIFY gt_mrp FROM gs_mrp INDEX lv_tabix
+    TRANSPORTING color.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form init_param
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM init_param .
+
+  gs_search-apstat = '1'.
+  gs_search-gstrp_low = sy-datum. "기본 조회 조건을 다음날로 설정.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_doc_l
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_doc_l .
+
+  CALL METHOD gcl_document_lf->initialize_document.
+
+  PERFORM set_document USING gcl_document_lf.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_style
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_style .
+
+  DATA : lv_tabix TYPE sy-tabix,
+         ls_style TYPE lvc_s_styl,
+         ls_color TYPE lvc_s_scol.
+
+  LOOP AT gt_order INTO gs_order.
+
+    lv_tabix = sy-tabix.
+
+    CASE gs_order-apstat.
+      WHEN '1'. " 대기 상태 (오더 승인전)일 경우 버튼으로 변경
+
+        ls_style-fieldname = 'AUFNR'. " 대기상태 일때만 핫스팟클릭해서 자재소요량 보기 가능
+        ls_style-style     = cl_gui_alv_grid=>mc_style_hotspot.
+
+        APPEND ls_style TO gs_order-style.
+        CLEAR  ls_style.
+
+        gs_order-stat_txt = '승인하기'.
+
+        ls_style-fieldname = 'STAT_TXT'.
+        ls_style-style     = cl_gui_alv_grid=>mc_style_button.
+
+        APPEND ls_style TO gs_order-style.
+        CLEAR  ls_style.
+
+      WHEN '2'. " 반려상태 일 경우 빨간색
+        ls_color-color-col = 5.
+        ls_color-color-int = 1.
+        ls_color-color-inv = 0.
+
+        APPEND ls_color TO gs_order-color.
+        CLEAR  ls_color.
+
+      WHEN OTHERS. " 승인상태일 경우 초록색
+*        ls_color-fname     = 'STAT_TXT'.
+        ls_color-color-col = 6.
+        ls_color-color-int = 0.
+        ls_color-color-inv = 0.
+
+        APPEND ls_color TO gs_order-color.
+        CLEAR  ls_color.
+
+    ENDCASE.
+
+    MODIFY gt_order FROM gs_order INDEX lv_tabix
+    TRANSPORTING style stat_txt color.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_button_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ES_ROW_NO
+*&      --> ES_COL_ID
+*&---------------------------------------------------------------------*
+FORM handle_button_click  USING  ps_row TYPE lvc_s_roid
+                                 ps_col TYPE lvc_s_col.
+
+  DATA : lv_msg    TYPE string,
+         lv_answer.
+
+  READ TABLE gt_order INTO gs_order INDEX ps_row-row_id.
+
+  IF sy-subrc <> 0.
+    EXIT.
+  ENDIF.
+
+  CASE ps_col-fieldname.
+    WHEN 'STAT_TXT'. " 생산 승인시
+**********************************************************************
+* 이걸 할 지 말지 ...고민중...
+**********************************************************************
+      " 계획시작일이 오늘거부터만 승인 가능하게 변경
+      IF gs_order-gstrp < sy-datum.
+*        MESSAGE i000 WITH '오늘 이후의 생산오더 건에서만 승인이 가능합니다.' DISPLAY LIKE 'E'.
+*        EXIT.
+
+        lv_msg = | 계획일자가 지난 생산오더입니다. \n신규 생산오더를 생성하시겠습니까?  |.
+
+        CALL FUNCTION 'POPUP_TO_CONFIRM' " 팝업 생성
+          EXPORTING
+            titlebar              = '생산오더 생성 확인'
+            text_question         = lv_msg
+            text_button_1         = '예'
+            icon_button_1         = 'ICON_OKAY'
+            text_button_2         = '반려'
+            icon_button_2         = 'ICON_CANCEL'
+            display_cancel_button = ' '
+          IMPORTING
+            answer                = lv_answer
+          EXCEPTIONS
+            text_not_found        = 1
+            OTHERS                = 2.
+
+        IF lv_answer = '1'.
+          gs_new_order = VALUE #(
+                          plnbez = gs_order-plnbez
+                          maktx = gs_order-maktx
+                          gamng = gs_order-gamng
+                          meins = gs_order-meins
+                          gstrp = sy-datum
+                      ).
+          CALL SCREEN '0104' STARTING AT 20 3.
+          RETURN.
+        ELSE.
+          UPDATE zte2pp0009
+             SET apstat = '3'
+           WHERE aufnr  = @gs_order-aufnr.
+
+          MESSAGE s000 WITH '생산오더가 반려되었습니다.'.
+          RETURN.
+        ENDIF.
+      ENDIF.
+
+      " 자재소요량 계산하기
+      PERFORM get_mat_req USING gs_order-plnbez
+                                gs_order-gamng
+                                gs_order-gstrp.
+
+      "계산과 동시에 화면에 띄워주기
+      PERFORM set_color_mrp.
+      PERFORM refresh_grid_mrp.
+      PERFORM refresh_grid_rou.
+
+      " 자재소요량 확인 (부족자재 여부 확인)
+      PERFORM result_mrp USING gs_order.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form result_mrp
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM result_mrp USING ps_order LIKE gs_order.
+
+  DATA : lv_msg    TYPE string,
+         lv_cnt    TYPE i,
+         lv_answer.
+
+  LOOP AT gt_mrp INTO gs_mrp WHERE  shortage_g > 0.
+
+    lv_cnt += 1. " 부족재고가 존재 할 경우 cnt값 추가하기
+
+    IF lv_msg IS INITIAL.
+      lv_msg = | { gs_mrp-maktx } ( { gs_mrp-shortage_u NUMBER = USER DECIMALS = 0 } { gs_mrp-unit_meins } )|.
+    ELSE.
+      lv_msg = | { lv_msg }, { gs_mrp-maktx } ( { gs_mrp-shortage_u NUMBER = USER DECIMALS = 0 } { gs_mrp-unit_meins } ) |.
+    ENDIF.
+
+  ENDLOOP.
+
+**********************************************************************
+* 자재소요량 상황 별 팝업 제어
+**********************************************************************
+
+  IF lv_cnt > 0. " 부족재고가 존재 할 경우  => 구매요청 생성 및 반려처리
+    lv_msg = | { lv_msg } 이(가) 부족합니다. \n { lv_cnt }개의 구매 요청을 생성하시겠습니까? |.
+
+    CALL FUNCTION 'POPUP_TO_CONFIRM' " 팝업 생성
+      EXPORTING
+        titlebar              = '구매요청 생성 확인'
+        text_question         = lv_msg
+        text_button_1         = '예'
+        icon_button_1         = 'ICON_OKAY'
+        text_button_2         = '아니오'
+        icon_button_2         = 'ICON_CANCEL'
+        display_cancel_button = ' '
+      IMPORTING
+        answer                = lv_answer
+      EXCEPTIONS
+        text_not_found        = 1
+        OTHERS                = 2.
+
+    IF lv_answer = '1'.
+      gv_ord_type = 'R'.
+      CALL SCREEN '0103' STARTING AT 20 3.
+
+    ELSE.
+      MESSAGE s000 WITH '구매요청 생성이 취소되었습니다.'.
+    ENDIF.
+
+  ELSE. " 부족재고가 한개도 존재하지 않을 때. => 생산 승인
+
+    lv_msg = | [{ ps_order-aufnr }] { ps_order-maktx } | &&
+             | ({ ps_order-gamng NUMBER = USER DECIMALS = 0 } { ps_order-meins }) | &&
+             | 생산 승인을 완료하시겠습니까? |.
+
+    CALL FUNCTION 'POPUP_TO_CONFIRM' " 팝업 생성
+      EXPORTING
+        titlebar              = '생산오더 최종 승인'
+        text_question         = lv_msg
+        text_button_1         = '예'
+        icon_button_1         = 'ICON_OKAY'
+        text_button_2         = '아니오'
+        icon_button_2         = 'ICON_CANCEL'
+        display_cancel_button = ' '
+      IMPORTING
+        answer                = lv_answer
+      EXCEPTIONS
+        text_not_found        = 1
+        OTHERS                = 2.
+
+    IF lv_answer = '1'.
+      " 생산오더 승인하기
+      " 승인상태변경, 재고 빼기, 예약테이블에 재고 저장, 생산오더아이템에 추가
+      gv_ord_type = 'S'.
+      CALL SCREEN '0103' STARTING AT 20 3.
+
+    ELSE.
+      MESSAGE s000 WITH '생산오더 생성이 취소되었습니다.'.
+    ENDIF.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_production_order
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> PS_ORDER
+*&      --> GT_MRP
+*&---------------------------------------------------------------------*
+FORM create_production_order  USING  ps_order LIKE gs_order
+                                     pt_mrp   LIKE gt_mrp.
+
+
+  DATA: lt_stock      TYPE TABLE OF zte2mm0004, " 재고 테이블
+        ls_stock      LIKE LINE OF lt_stock,
+        lt_stock_save LIKE TABLE OF ls_stock,   " 재고테이블 데이터 저장용
+        lv_needed_qty TYPE zte2pp0010-bdmng,
+        lv_alloc_qty  TYPE zte2pp0010-bdmng,
+        ls_item       TYPE zte2pp0010,        " 생산 아이템 테이블
+        lt_item       LIKE TABLE OF ls_item,
+        ls_reser      TYPE zte2mm0017,        " 예약 테이블
+        lt_reser      LIKE TABLE OF ls_reser,
+        lv_rsnum      TYPE zte2mm0017-rsnum,  " 예약 번호
+        lv_tabix      TYPE sy-tabix,
+        lv_posnr      TYPE zte2pp0010-posnr, " 생산 오더 항목번호
+        ls_mov_h      TYPE zte2mm0011,
+        ls_mov_i      TYPE zte2mm0012,
+        lt_mov_i      LIKE TABLE OF ls_mov_i,
+        ls_timestamp  TYPE zse2timestamp,
+        lv_commit,
+        lv_err,
+        BEGIN OF ls_recp,
+          plnnr TYPE zte2pp0009-plnnr,
+          stlnr TYPE zte2pp0009-stlnr,
+        END OF ls_recp,
+        lv_mhdhb TYPE zte2mm0001-mhdhb,
+        lv_vfdat TYPE zte2pp0009-gstrp.
+
+  CLEAR : lv_posnr, lv_tabix, ls_item, ls_stock, lv_needed_qty, lv_alloc_qty.
+  REFRESH : lt_item, lt_stock_save, lt_stock, lt_reser.
+
+* BOM, 라우팅 연결
+  SELECT SINGLE plnnr, stlnr
+    FROM zte2pp0008
+   WHERE matnr = @ps_order-plnbez
+    INTO CORRESPONDING FIELDS OF @ls_recp.
+
+*       생산 승인 상태 변경
+  ps_order-apstat = '2'.
+
+* 자재 예약 번호 채번
+  PERFORM get_rs_num USING lv_rsnum.
+
+
+* 자재이동문서 헤더, 아이템
+  ls_mov_h = VALUE #(
+    mjahr = sy-datum(4)
+    aufnr = ps_order-aufnr
+    bldat = sy-datum
+    budat = sy-datum
+    bukrs = '1000'
+  ).
+
+* 투입 자재 유통기한
+  SELECT SINGLE mhdhb
+    FROM zte2mm0001
+   WHERE matnr = @ps_order-plnbez
+    INTO @lv_mhdhb.
+
+  " 생산품의 보존기한 + 납기시간 + 고객사 최소 보장기간
+  lv_vfdat = ps_order-gstrp + lv_mhdhb + 2.
+
+  " 생산시 들어가는 자재 아이템에 저장
+  " 생산에 필요한 자재별로 루프
+  LOOP AT pt_mrp INTO gs_mrp.
+*    lv_needed_qty = gs_mrp-req_qty_g. " 이번 생산에 필요 수량
+    lv_needed_qty = gs_mrp-req_qty_u. " 이번 생산에 필요 수량 --> 이제 단위 변경
+
+    " 해당 자재의 가용재고 유통기한 순으로 가져오기 (같은배치는 같은 유통기한)
+    SELECT matnr charg  lgort  werks  mtart
+           labst insme speme retme vfdat
+           meins dmbtr waers
+           ernam erdat erzet aenam aedat aezet
+      INTO CORRESPONDING FIELDS OF TABLE lt_stock
+      FROM zte2mm0004
+     WHERE matnr = gs_mrp-matnr
+       AND labst > 0 " 재고가 존재할때만
+       AND vfdat >= lv_vfdat " 생산예정일 이후의 유통기한이 남아있는재고만
+     ORDER BY vfdat ASCENDING.
+
+    LOOP AT lt_stock INTO ls_stock.
+
+      lv_tabix = sy-tabix.
+
+      IF lv_needed_qty <= 0. " 다 채웠으면 탈출
+        EXIT.
+      ENDIF.
+
+      " 특정 배치에서 가져올 수량 결정
+      IF ls_stock-labst >= lv_needed_qty. " 배치의 재고가 충분하면 ?
+        lv_alloc_qty = lv_needed_qty. " 전부 가져감
+      ELSE.
+        lv_alloc_qty = ls_stock-labst. " 있는거 전부
+      ENDIF.
+
+**********************************************************************
+*                     데이터 가공, 테이블 추가용 itab
+**********************************************************************
+*     1. 재고 차감 기록
+*      MOVE-CORRESPONDING ls_stock TO ls_timestamp.
+*
+*      CALL FUNCTION 'ZFE2US0002'
+*        EXPORTING
+*          is_timestamp = ls_timestamp
+*        IMPORTING
+*          es_timestamp = ls_timestamp.
+*
+*      MOVE-CORRESPONDING ls_timestamp TO ls_stock.
+*
+*      ls_stock-labst = ls_stock-labst - lv_alloc_qty.
+*
+*      APPEND  ls_stock TO lt_stock_save.
+*      CLEAR : ls_timestamp.
+
+      CALL FUNCTION 'ZFE2US0002'
+        EXPORTING
+          is_timestamp = ls_timestamp
+        IMPORTING
+          es_timestamp = ls_timestamp.
+
+      lv_posnr += 10.
+      CLEAR ls_item.
+
+*     1. 자재이동문서 아이템
+
+*      ls_mov_i-mjahr = sy-datum(4).
+      ls_mov_i-bwart = '301'. " 플랜트 간 이전
+      ls_mov_i-charg = ls_stock-charg. " 배치
+      ls_mov_i-matnr = ls_stock-matnr. " 자재
+      ls_mov_i-menge = lv_alloc_qty. " 몇개
+      ls_mov_i-meins = ls_stock-meins. "단위
+      ls_mov_i-werks = ls_stock-werks. "플랜트
+      ls_mov_i-umwrk = '1000'. " 이동후 플랜트
+      ls_mov_i-lgort = ls_stock-lgort. "저장위치
+      ls_mov_i-waers = 'KRW'.
+      ls_mov_i-umlgo = 'PP01'. " 이동후 lgort
+      ls_mov_i-posnr = lv_posnr.
+      ls_mov_i-btext = '생산투입 전 자재이동'.
+
+      APPEND ls_mov_i TO lt_mov_i.
+      CLEAR  ls_mov_i.
+
+*     2. 생산오더 아이템 데이터 구성
+      ls_item-aufnr = ps_order-aufnr. " 생산오더번호
+      ls_item-posnr = lv_posnr.       " 항목번호
+      ls_item-matnr = gs_mrp-matnr.   " 자재번호
+      ls_item-charg = ls_stock-charg. " 배치
+      ls_item-bdmng = lv_alloc_qty.   " 수량
+      ls_item-meins = gs_mrp-unit_meins.   " 단위
+
+      MOVE-CORRESPONDING ls_timestamp TO ls_item.
+      APPEND ls_item TO lt_item.
+
+*     3. 예약 테이블 데이터 구성
+      CLEAR  ls_reser.
+      ls_reser-rsnum = lv_rsnum.        " 예약번호
+      ls_reser-aufnr = ps_order-aufnr.  " 생산오더번호
+      ls_reser-matnr = gs_mrp-matnr.    " 자재번호
+      ls_reser-charg = ls_stock-charg.  " 배치
+      ls_reser-bdmng = lv_alloc_qty.    " 예약 수량
+      ls_reser-meins  = gs_mrp-unit_meins.   " 단위
+      ls_reser-status = 'N'.            " 상태 - 생성
+
+      MOVE-CORRESPONDING ls_timestamp TO ls_reser.
+      APPEND ls_reser TO lt_reser.
+
+      lv_needed_qty = lv_needed_qty - lv_alloc_qty.
+
+      CLEAR ls_timestamp.
+
+    ENDLOOP.
+
+    IF lv_needed_qty > 0. " 재고 루프 다 돌았는데 수량이 남았다면?
+      lv_err = 'X'.
+      MESSAGE s000 WITH gs_mrp-matnr '자재의 가용 재고가 부족합니다.' DISPLAY LIKE 'E'.
+      EXIT. " 정말 혹시 모를 상황에 대비 ...
+    ENDIF.
+
+  ENDLOOP.
+*
+***********************************************************************
+** 최종 db 반영하기
+***********************************************************************
+  " 1. 재고 업데이트
+*  IF lt_stock_save IS NOT INITIAL.
+*    MODIFY zte2mm0004 FROM TABLE lt_stock_save.
+*    IF sy-subrc <> 0.
+*      lv_err = 'X'.
+*      MESSAGE s000 WITH '재고 업데이트 실패' DISPLAY LIKE 'E'.
+*    ENDIF.
+*  ENDIF.
+
+  IF ls_mov_h IS NOT INITIAL AND lt_mov_i IS NOT INITIAL.
+    CALL METHOD zcl_e2_mm_posting=>post_goods_movement
+      EXPORTING
+        is_header = ls_mov_h              " [MM] 자재 이동 헤더
+        it_items  = lt_mov_i        " [MM] 자재이동문서 Item 테이블 타입
+      IMPORTING
+*       et_return =                  " Return table
+*       ev_mblnr  =                  " [MM] 자재 문서 번호
+*       ev_mjahr  =                  " [MM] 자재 문서 연도
+        ev_subrc  = DATA(lv_subrc).   " Return Code
+
+    IF lv_subrc <> 0.
+      lv_err = 'X'.
+      MESSAGE s000 WITH '자재이동 메서드 채번 및 재고 이동 실패' DISPLAY LIKE 'E'.
+    ENDIF.
+
+
+  ENDIF.
+
+  " 2. 생산오더 아이템 저장
+  IF lv_err IS INITIAL AND lt_item IS NOT INITIAL.
+    INSERT zte2pp0010 FROM TABLE lt_item.
+    IF sy-subrc <> 0.
+      lv_err = 'X'.
+      MESSAGE s000 WITH '생산오더 아이템 저장 실패' DISPLAY LIKE 'E'.
+    ENDIF.
+  ENDIF.
+
+  " 3. 예약 테이블 저장
+  IF lv_err IS INITIAL AND lt_reser IS NOT INITIAL.
+    INSERT zte2mm0017 FROM TABLE lt_reser.
+    IF sy-subrc <> 0.
+      lv_err = 'X'.
+      MESSAGE s000 WITH '예약 테이블 저장 실패' DISPLAY LIKE 'E'.
+    ENDIF.
+  ENDIF.
+
+  IF lv_err IS INITIAL. " 에러가 하나도 없을때만 헤더 상태 변경 및 커밋처리
+    UPDATE zte2pp0009
+       SET apstat = '2',
+           pernr = @gs_pernr-pernr,
+           stlnr = @ls_recp-stlnr,
+           plnnr = @ls_recp-plnnr,
+           aedat = @sy-datum,
+           aenam = @sy-uname,
+           aezet = @sy-uzeit
+     WHERE aufnr = @ps_order-aufnr.
+
+    IF sy-subrc = 0.
+      COMMIT WORK AND WAIT.
+      MESSAGE i000 WITH ps_order-aufnr'번 생산오더의 승인이 완료되었습니다.' DISPLAY LIKE 'S'.
+    ELSE.
+      ROLLBACK WORK.
+      MESSAGE s000 WITH '헤더 상태 업데이트 실패' DISPLAY LIKE 'E'.
+    ENDIF.
+  ELSE.
+    ROLLBACK WORK.
+    MESSAGE i000 WITH '데이터 정합성 문제로 모든 작업이 취소되었습니다.' DISPLAY LIKE 'E'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_rs_num
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_rs_num USING  pv_rsnum. " 예약번호 채번
+
+  DATA : lv_num(7) TYPE n,
+         lv_range  TYPE inri-nrrangenr VALUE '06',
+         lv_obj    TYPE inri-object VALUE 'ZNRE2MM01'.
+
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = lv_range
+      object      = lv_obj
+    IMPORTING
+      number      = lv_num.
+
+  pv_rsnum = |REV{ lv_num }|.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form check_valid_date
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM check_valid_date CHANGING pv_err.
+
+  CHECK gv_okcode <> 'REFRESH'.
+  CLEAR pv_err.
+
+  IF gs_search-gstrp_low  IS NOT INITIAL AND
+     gs_search-gstrp_high IS NOT INITIAL.
+
+    IF gs_search-gstrp_low > gs_search-gstrp_high.
+      MESSAGE s000 WITH '계획 시작일이 종료일보다 클 수 없습니다.' DISPLAY LIKE 'E'.
+      SET CURSOR FIELD 'GS_SEARCH-GSTRP_LOW'.
+      pv_err = 'X'.
+    ENDIF.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_purchase_request
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_purchase_request USING ps_order LIKE gs_order .
+
+  DATA : ls_header    TYPE zte2mm0019,
+         ls_item      TYPE zte2mm0020,
+         lt_item      LIKE TABLE OF ls_item,
+         lv_banfn     TYPE zte2mm0019-banfn,
+         lv_bnfpo     TYPE zte2mm0020-bnfpo,
+         ls_timestamp TYPE zse2timestamp,
+         lv_commit,
+         lv_final_qty TYPE i,
+         lv_n_lot     TYPE i.
+
+  DATA : lv_idoc_amt(30),
+         lv_mat_actual   TYPE zte2mm0020-netwr,
+         lv_calc_netwr   TYPE p DECIMALS 2.
+
+
+  CLEAR lv_bnfpo.
+
+  CALL FUNCTION 'ZFE2US0002'
+    EXPORTING
+      is_timestamp = ls_timestamp
+    IMPORTING
+      es_timestamp = ls_timestamp.
+
+  PERFORM get_banfn USING lv_banfn.
+
+  ls_header-banfn = lv_banfn.
+  ls_header-bsart = 'NB'.
+  ls_header-badat = sy-datum.
+  ls_header-aufnr = ps_order-aufnr.
+  ls_header-pernr = gs_pernr-pernr.
+  ls_header-banpr = ' '. " 상태를 요청으로 보내기
+  ls_header-lpein = sy-datum + 1.
+  ls_header-po_create_date = sy-datum + 1 - 6.
+
+  MOVE-CORRESPONDING ls_timestamp TO ls_header.
+
+  LOOP AT gt_mrp INTO gs_mrp WHERE shortage_u > 0.
+
+    CLEAR ls_item.
+
+    lv_bnfpo += 10.
+
+    ls_item-banfn = lv_banfn. " 구매요청번호
+    ls_item-bnfpo = lv_bnfpo. " 구매요청항목
+    ls_item-matnr = gs_mrp-matnr. " 자재번호
+    ls_item-werks = '2000'. " 플랜트
+
+    SELECT SINGLE raube
+      FROM zte2mm0001
+     WHERE matnr = @gs_mrp-matnr
+      INTO @DATA(lv_raube).
+
+    IF sy-subrc <> 0.
+      lv_raube = ' '.
+    ENDIF.
+
+    CASE lv_raube. " 저장위치 생성
+      WHEN '01'.
+        ls_item-lgort = 'SL01'. "상온
+      WHEN '02'.
+        ls_item-lgort = 'RE01'. "냉장
+      WHEN '03'.
+        ls_item-lgort = 'FR01'. "냉동
+    ENDCASE.
+
+    ls_item-menge = gs_mrp-shortage_u. " 요청수량
+    ls_item-meins = gs_mrp-unit_meins. " 요청 단위
+
+*    IF gs_order-gstrp <= sy-datum. " 오늘 / 오늘이전의 생산오더건
+*      ls_item-lpein = sy-datum + 1.
+*    ELSE.
+*      ls_item-lpein = gs_order-gstrp.
+*    ENDIF.
+
+    MOVE-CORRESPONDING ls_timestamp TO ls_item.
+
+    APPEND ls_item TO lt_item.
+    CLEAR  ls_item.
+
+  ENDLOOP.
+
+  INSERT zte2mm0019 FROM ls_header. " 헤더 인서트
+
+  IF sy-subrc = 0. " 성공시에만
+    " 아이템들 인서트 시도
+    INSERT zte2mm0020 FROM TABLE lt_item.
+
+    IF sy-subrc = 0.
+      UPDATE zte2pp0009
+         SET apstat = '3'
+       WHERE aufnr  = @gs_order-aufnr.
+
+      IF sy-subrc = 0.
+        COMMIT WORK.
+        MESSAGE i000 WITH |구매요청 { ls_header-banfn }가 생성되었습니다. | DISPLAY LIKE 'S'.
+      ELSE.
+        ROLLBACK WORK.
+        MESSAGE s000 WITH '생산오더 상태 업데이트 실패' DISPLAY LIKE 'E'..
+      ENDIF.
+
+    ELSE.
+      " 아이템 인서트 실패시
+      ROLLBACK WORK. " 헤더 들어간 것도 취소
+      MESSAGE s000 WITH '구매요청 아이템 생성 실패' DISPLAY LIKE 'E'.
+    ENDIF.
+
+  ELSE.
+    " 헤더 인서트 실패
+    MESSAGE s000 WITH '구매요청 헤더 생성 실패' DISPLAY LIKE 'E'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_banfn
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> LV_BANFN
+*&---------------------------------------------------------------------*
+FORM get_banfn  USING   pv_banfn. " 예약번호 채번
+
+  DATA : lv_num(7) TYPE n,
+         lv_range  TYPE inri-nrrangenr VALUE '03',
+         lv_obj    TYPE inri-object VALUE 'ZNRE2MM01'.
+
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = lv_range
+      object      = lv_obj
+    IMPORTING
+      number      = lv_num.
+
+  pv_banfn = |PRE{ lv_num }|.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form check_valid_pernr
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM check_valid_pernr .
+
+  DATA : BEGIN OF ls_dummy,
+           pernr TYPE zte2hr0002-pernr,
+           sname TYPE zte2hr0002-sname,
+         END OF ls_dummy.
+
+  CLEAR gv_pernr_invalid.
+
+  IF gs_pernr-pernr IS INITIAL.
+    MESSAGE s000 WITH '담당자를 지정해주세요.' DISPLAY LIKE 'E'.
+    gv_pernr_invalid = 'X'.
+    RETURN.
+  ENDIF.
+
+  SELECT SINGLE pernr
+    FROM zte2hr0002
+   WHERE pernr = @gs_pernr-pernr
+    INTO CORRESPONDING FIELDS OF @ls_dummy.
+
+  IF sy-subrc <> 0.
+    MESSAGE s000 WITH '존재하지않는 사원입니다.' DISPLAY LIKE 'E'.
+    gv_pernr_invalid = 'X'.
+    RETURN.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form check_valid_matnr
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM check_valid_matnr USING    pv_matnr TYPE zte2mm0001-matnr
+                       CHANGING pv_subrc TYPE sy-subrc .
+
+  SELECT SINGLE matnr
+    FROM zte2mm0001
+   WHERE matnr = @pv_matnr
+    INTO @DATA(lv_dummy).
+
+  IF sy-subrc <> 0.
+    MESSAGE s000 WITH '존재하지않는 자재입니다.' DISPLAY LIKE 'E'.
+    pv_subrc = sy-subrc.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form f4_pernr
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM f4_pernr .
+
+  DATA: BEGIN OF ls_pernr,
+          pernr TYPE zte2hr0002-pernr,
+          sname TYPE zte2hr0002-sname, " 사원 성명
+          orgtx TYPE zte2hr0001-orgtx, " 부서명
+        END OF ls_pernr,
+
+        lt_pernr  LIKE TABLE OF ls_pernr,
+
+        lt_return TYPE TABLE OF ddshretval,
+        ls_return TYPE ddshretval,
+        lt_dynp   TYPE TABLE OF dynpread,
+        ls_dynp   TYPE dynpread.
+
+  SELECT a~pernr, a~sname, b~orgtx
+    FROM zte2hr0002 AS a
+   INNER JOIN zte2hr0001 AS b
+      ON a~orgeh = b~orgeh
+     AND a~orgeh = '30000000'
+     INTO CORRESPONDING FIELDS OF TABLE @lt_pernr.
+
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield     = 'PERNR'
+      dynpprog     = sy-repid
+      dynpnr       = sy-dynnr
+      dynprofield  = 'GS_PERNR-PERNR'
+      window_title = '담당자 지정'
+      value_org    = 'S'
+    TABLES
+      value_tab    = lt_pernr
+      return_tab   = lt_return.
+
+  IF lt_return[] IS NOT INITIAL.
+
+    READ TABLE lt_return INTO ls_return INDEX 1.
+
+    IF sy-subrc = 0.
+
+      READ TABLE lt_pernr INTO ls_pernr WITH KEY pernr = ls_return-fieldval.
+
+      IF sy-subrc = 0.
+        CLEAR   ls_dynp.
+
+        ls_dynp-fieldname = 'GS_PERNR-PERNR'.
+        ls_dynp-fieldvalue = ls_return-fieldval.
+        APPEND ls_dynp TO lt_dynp.
+        CLEAR ls_dynp.
+
+        ls_dynp-fieldname = 'GS_PERNR-SNAME'.
+        ls_dynp-fieldvalue = ls_pernr-sname.
+        APPEND ls_dynp TO lt_dynp.
+        CLEAR ls_dynp.
+
+        CALL FUNCTION 'DYNP_VALUES_UPDATE'
+          EXPORTING
+            dyname               = sy-repid
+            dynumb               = sy-dynnr
+          TABLES
+            dynpfields           = lt_dynp
+          EXCEPTIONS
+            invalid_abapworkarea = 1
+            invalid_dynprofield  = 2
+            invalid_dynproname   = 3
+            invalid_dynpronummer = 4
+            invalid_request      = 5
+            no_fielddescription  = 6
+            undefind_error       = 7
+            OTHERS               = 8.
+
+      ENDIF.
+
+      gs_pernr-pernr = ls_pernr-pernr.
+      gs_pernr-sname = ls_pernr-sname.
+
+    ENDIF.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_new_order
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_new_order .
+
+  DATA : ls_save   TYPE zte2pp0009,
+         lv_num(7) TYPE n,
+         lv_range  TYPE inri-nrrangenr VALUE '01',
+         lv_obj    TYPE inri-object VALUE 'ZNRE2PP01',
+         ls_prod   TYPE zte2pp0009,
+         lv_err,
+
+         BEGIN OF ls_tmp,
+           stlnr TYPE zte2pp0008-stlnr,
+           plnnr TYPE zte2pp0008-plnnr,
+         END OF ls_tmp.
+
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = lv_range      " 사용하고자 하는 구간
+      object      = lv_obj      " nr 객체
+    IMPORTING
+      number      = lv_num.
+
+  CLEAR : lv_err, ls_save, ls_prod, ls_tmp.
+
+  MOVE-CORRESPONDING gs_new_order TO ls_save.
+
+  SELECT SINGLE stlnr, plnnr
+    FROM zte2pp0008
+   WHERE matnr = @gs_order-plnbez
+    INTO CORRESPONDING FIELDS OF @ls_tmp.
+
+  ls_save = VALUE #( BASE ls_save
+                          aufnr = |PRD{ lv_num }|
+                          auart = 'ZCUS'
+                          stlnr = ls_tmp-stlnr
+                          plnnr = ls_tmp-plnnr
+                          gltrp = gs_new_order-gstrp
+                          ordat = sy-datum
+                          apstat = '1'
+                          ernam = sy-uname
+                          erdat = sy-datum
+                          erzet = sy-uzeit
+                     ).
+
+  INSERT zte2pp0009 FROM ls_save.
+
+  IF sy-dbcnt <= 0.
+    lv_err = 'X'.
+  ENDIF.
+
+  SELECT SINGLE *
+    FROM zte2pp0009
+    INTO CORRESPONDING FIELDS OF ls_prod
+   WHERE aufnr = gs_order-aufnr.
+
+  ls_prod-apstat = '3'.
+
+  MODIFY zte2pp0009 FROM ls_prod.
+
+  IF sy-dbcnt <= 0.
+    lv_err = 'X'.
+  ENDIF.
+
+  IF lv_err IS INITIAL.
+    COMMIT WORK AND WAIT.
+    MESSAGE s000 WITH '과거 생산오더가 반려되며, 신규 생산오더가 생성되었습니다.'.
+  ELSE.
+    ROLLBACK WORK.
+    MESSAGE s000 WITH '생산오더 생성이 취소되었습니다.' DISPLAY LIKE 'E'.
+  ENDIF.
+
+  CLEAR gv_okcode.
+  CLEAR gs_search.
+
+  PERFORM init_param.
+  PERFORM get_order.
+  PERFORM set_style.
+  PERFORM refresh_grid_order.
+  PERFORM refresh_doc_l.
+
+  REFRESH : gt_mrp, gt_routing.
+  PERFORM refresh_grid_mrp.
+  PERFORM refresh_grid_rou.
+
+  LEAVE TO SCREEN 0.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

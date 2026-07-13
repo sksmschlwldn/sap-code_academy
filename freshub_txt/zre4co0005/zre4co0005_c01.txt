@@ -1,0 +1,51 @@
+*&---------------------------------------------------------------------*
+*& Include          ZRE4CO0005_C01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Class go_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS gcl_event_handler DEFINITION FINAL.
+
+  PUBLIC SECTION.
+    CLASS-METHODS:
+      handle_hotspot_click FOR EVENT hotspot_click OF cl_gui_alv_grid
+        IMPORTING
+          e_row_id
+          e_column_id,
+
+      handle_item_double_click FOR EVENT item_double_click OF cl_gui_alv_tree
+        IMPORTING
+          node_key
+          fieldname.
+
+*      handle_subtotal_text FOR EVENT subtotal_text OF cl_gui_alv_grid
+*        IMPORTING es_subtottxt_info
+*                  ep_subtot_line
+*                  e_event_data.
+
+ENDCLASS.
+*&---------------------------------------------------------------------*
+*& Class (Implementation) go_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS gcl_event_handler IMPLEMENTATION.
+
+  METHOD handle_hotspot_click.
+    PERFORM handle_hotspot_click USING e_row_id e_column_id.
+  ENDMETHOD.
+
+  METHOD handle_item_double_click.
+    PERFORM handle_item_double_click USING node_key fieldname.
+  ENDMETHOD.
+
+*  METHOD handle_subtotal_text.
+*    PERFORM handle_subtotal_text USING es_subtottxt_info ep_subtot_line e_event_data.
+*  ENDMETHOD.
+
+ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

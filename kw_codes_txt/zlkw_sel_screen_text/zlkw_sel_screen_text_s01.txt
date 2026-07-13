@@ -1,0 +1,17 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_SEL_SCREEN_TEXT_S01
+*&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK bl1 WITH FRAME TITLE TEXT-t01.
+
+  SELECTION-SCREEN BEGIN OF LINE.
+    SELECTION-SCREEN COMMENT 2(10) TEXT-t02 FOR FIELD pa_carr.
+
+    PARAMETERS : pa_carr TYPE scarr-carrid.
+
+    SELECTION-SCREEN COMMENT 20(30) carrname.
+  SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN END OF BLOCK bl1.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

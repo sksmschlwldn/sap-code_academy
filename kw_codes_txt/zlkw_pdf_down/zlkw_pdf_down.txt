@@ -1,0 +1,43 @@
+*&---------------------------------------------------------------------*
+*& Report ZLKW_PDF_DOWN
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE zlkw_pdf_down_top                       .    " Global Data
+
+INCLUDE zlkw_pdf_down_s01                       .  " Selection Screen
+INCLUDE zlkw_pdf_down_o01                       .  " PBO-Modules
+INCLUDE zlkw_pdf_down_i01                       .  " PAI-Modules
+INCLUDE zlkw_pdf_down_f01                       .  " FORM-Routines
+
+START-OF-SELECTION.
+  PERFORM get_data.
+
+  CALL SCREEN '0100'.
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [C5] PDF Download sample
+
+*Text elements
+*----------------------------------------------------------
+* E01 임시파일 초기화 실패
+* E02 이전에 Excel에서 자료를 Open 하였는지 확인
+* M01 Fille  선택을 취소했습니다
+* T01 Selection Condition
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_CARR D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

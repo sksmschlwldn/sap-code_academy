@@ -1,0 +1,42 @@
+*&---------------------------------------------------------------------*
+*& Report ZLKW_ALV_TOOLBAR_MODI
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE zlkw_alv_toolbar_modi_top               .    " Global Data
+
+INCLUDE zlkw_alv_toolbar_modi_s01.  " Selection Screen
+INCLUDE zlkw_alv_toolbar_modi_c01.  " Local Class
+INCLUDE zlkw_alv_toolbar_modi_o01.  " PBO-Modules
+INCLUDE zlkw_alv_toolbar_modi_i01.  " PAI-Modules
+INCLUDE zlkw_alv_toolbar_modi_f01.  " FORM-Routines
+
+START-OF-SELECTION.
+  PERFORM get_airline.
+  PERFORM set_color.
+
+  CALL SCREEN '0100'.
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [C5] ALV Toolbar Change
+
+*Text elements
+*----------------------------------------------------------
+* T01 Selection Condition
+
+
+*Selection texts
+*----------------------------------------------------------
+* SO_CARR D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

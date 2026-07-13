@@ -1,0 +1,61 @@
+*&---------------------------------------------------------------------*
+*& Report ZRE2PP0002
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE zre2pp0002_top                          .    " Global Data
+
+INCLUDE zre2pp0002_s01                          .  " Selection Screen
+INCLUDE zre2pp0002_c01                          .  " Selection Screen
+INCLUDE zre2pp0002_o01                          .  " PBO-Module
+INCLUDE zre2pp0002_i01                          .  " PAI-Modules
+INCLUDE zre2pp0002_f01                          .  " FORM-Routines
+
+INITIALIZATION.
+  PERFORM set_init.
+
+AT SELECTION-SCREEN OUTPUT.
+  PERFORM modify_sel_screen.
+
+START-OF-SELECTION.
+  PERFORM get_bom_h.
+
+  CASE 'X'.
+    WHEN pa_modi.
+      CALL SCREEN '0100'.
+    WHEN pa_new.
+      CALL SCREEN '0200'.
+  ENDCASE.
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [PP] BOM 조회 및 수정
+* T0200 --> [PP] BOM 생성
+
+*Text elements
+*----------------------------------------------------------
+* R01 BOM 조회 및 수정
+* R02 BOM 생성
+* T01 조회 조건
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_MAKTX D       .
+* PA_WERKS D       .
+* SO_MATNR D       .
+* SO_STLNR D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: Hard coded
+*   삭제가 취소되었습니다.
+*
+* Message class: ZPE2M
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

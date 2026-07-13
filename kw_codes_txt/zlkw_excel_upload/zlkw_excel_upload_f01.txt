@@ -1,0 +1,349 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_EXCEL_UPLOAD_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form set_btn
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_btn .
+
+  CONCATENATE icon_xls 'Template Download' INTO sscrfields-functxt_01
+  SEPARATED BY space.
+*  CALL FUNCTION 'ICON_CREATE'
+*    EXPORTING
+*      name   = icon_xls
+*      text   = TEXT-m01
+*      info   = TEXT-m01
+*    IMPORTING
+*      result = sscrfields-functxt_01
+*    EXCEPTIONS
+*      OTHERS = 0.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form scr_command
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM scr_command .
+
+  DATA lv_form_id TYPE w3objid VALUE 'ZLKW_EXCEL_UPLOAD'.
+
+  CASE sscrfields-ucomm.
+    WHEN 'FC01'.
+
+      PERFORM get_form USING TEXT-m02 lv_form_id.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_form
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> TEXT_M02
+*&      --> LV_FORM_ID
+*&---------------------------------------------------------------------*
+FORM get_form  USING pv_name
+                     pv_form.
+
+  DATA : lv_filename    TYPE string,
+         lv_name        TYPE string,
+         lv_path        TYPE string,
+         lv_fullpath    TYPE string,
+         lv_user_action TYPE i,
+         ls_key         TYPE wwwdatatab,
+         lv_langu       TYPE laiso.
+
+  SELECT SINGLE f~relid f~objid f~checkout f~checknew
+         f~chname f~tdate f~ttime f~text p~devclass
+    INTO CORRESPONDING FIELDS OF ls_key
+    FROM wwwdata AS f
+    JOIN tadir AS p
+      ON f~objid    EQ p~obj_name
+   WHERE f~srtf2    EQ 0
+     AND f~relid    EQ 'MI'
+     AND p~pgmid    EQ 'R3TR'
+     AND p~object   EQ 'W3MI'
+     AND p~obj_name EQ pv_form.
+
+  IF sy-subrc <> 0.
+    MESSAGE s000 WITH TEXT-e01 DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  CONCATENATE pv_name '.xlsx' INTO lv_name.
+
+  CALL METHOD cl_gui_frontend_services=>file_save_dialog
+    EXPORTING
+*     window_title              =
+      default_extension         = 'XLSX'
+      default_file_name         = lv_name
+*     with_encoding             =
+*     file_filter               =
+*     initial_directory         =
+*     prompt_on_overwrite       = 'X'
+    CHANGING
+      filename                  = lv_filename
+      path                      = lv_path
+      fullpath                  = lv_fullpath
+      user_action               = lv_user_action
+*     file_encoding             =
+    EXCEPTIONS
+      cntl_error                = 1
+      error_no_gui              = 2
+      not_supported_by_gui      = 3
+      invalid_default_file_name = 4
+      OTHERS                    = 5.
+
+  IF lv_user_action = cl_gui_frontend_services=>action_cancel.
+    EXIT.
+  ENDIF.
+
+  CALL FUNCTION 'DOWNLOAD_WEB_OBJECT'
+    EXPORTING
+      key         = ls_key
+      destination = CONV localfile( lv_fullpath ).
+
+  CALL METHOD cl_gui_frontend_services=>execute
+    EXPORTING
+      document               = lv_fullpath
+    EXCEPTIONS
+      cntl_error             = 1
+      error_no_gui           = 2
+      bad_parameter          = 3
+      file_not_found         = 4
+      path_not_found         = 5
+      file_extension_unknown = 6
+      error_execute_failed   = 7
+      synchronous_failed     = 8
+      not_supported_by_gui   = 9
+      OTHERS                 = 10.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_fname
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_fname .
+
+  CALL FUNCTION 'WS_FILENAME_GET'
+    EXPORTING
+      def_path         = 'C:/'
+      mask             = ',*.xls;*.xlsx,*.xls;*.xlsx,'
+      mode             = 'O'
+    IMPORTING
+      filename         = pa_fname
+    EXCEPTIONS
+      inv_winsys       = 1
+      no_batch         = 2
+      selection_cancel = 3
+      selection_error  = 4
+      OTHERS           = 5.
+
+  IF sy-subrc <> 0.
+    MESSAGE s000 WITH TEXT-m03. "파일선택이 취소 되었습니다.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form upload_file
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM upload_file .
+
+  DATA : lt_excel      TYPE TABLE OF alsmex_tabline,
+         lv_begin_row  TYPE i,
+         lv_end_row    TYPE i,
+         lv_row        TYPE kcd_ex_row_n VALUE 1,
+         lv_range_rows TYPE i VALUE 10000.
+
+  CLEAR : lv_begin_row, lv_end_row.
+
+  lv_begin_row = 2. "엑셀에서 읽기 시작할 행번호
+  lv_end_row   = lv_begin_row + lv_range_rows - 1.
+
+  CLEAR : gt_data.
+
+*  DO.
+  CLEAR lt_excel.
+  CALL FUNCTION 'ALSM_EXCEL_TO_INTERNAL_TABLE'
+    EXPORTING
+      filename                = pa_fname
+      i_begin_col             = 1  "엑셀에서 읽을 시작 칼럼 번호
+      i_begin_row             = lv_begin_row
+      i_end_col               = 6  "엑셀에서 읽을 칼럼 개수
+      i_end_row               = lv_end_row
+    TABLES
+      intern                  = lt_excel
+    EXCEPTIONS
+      inconsistent_parameters = 1
+      upload_ole              = 2
+      OTHERS                  = 3.
+
+  IF lt_excel IS NOT INITIAL.
+    APPEND LINES OF lt_excel TO gt_excel.
+  ENDIF.
+
+*  lv_begin_row = lv_end_row + 1.
+*  lv_end_row   = lv_begin_row + lv_range_rows - 1.
+*  ENDDO.
+
+  IF gt_excel IS INITIAL.
+    MESSAGE s000 WITH TEXT-e02 DISPLAY LIKE 'E'.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+  LOOP AT gt_excel INTO gs_excel.
+
+    IF lv_row NE gs_excel-row.
+      lv_row = gs_excel-row.
+
+      APPEND gs_data TO gt_data.
+      CLEAR  gs_data.
+    ENDIF.
+
+    CASE gs_excel-col.
+      WHEN 1. "자재번호
+        gs_data-matnr = gs_excel-value.
+
+      WHEN 2. "자재 내역
+        gs_data-maktx = gs_excel-value.
+
+      WHEN 3. "수량
+
+* 숫자의 천단위 , 없애기
+        REPLACE ALL OCCURRENCES OF ',' IN gs_excel-value WITH ''.
+
+        gs_data-menge = gs_excel-value.
+
+      WHEN 4. "단위
+        gs_data-meins = gs_excel-value.
+
+      WHEN 5. "금액
+* 숫자의 천단위 , 없애기
+        REPLACE ALL OCCURRENCES OF ',' IN gs_excel-value WITH ''.
+
+        gs_data-netpr = gs_excel-value.
+
+      WHEN 6. "통화키
+        gs_data-waers = gs_excel-value.
+
+    ENDCASE.
+
+  ENDLOOP.
+
+* 마지막 행
+  APPEND gs_data TO gt_data.
+  CLEAR  gs_data.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fcat_layout .
+
+  gs_layout-zebra      = 'X'.
+  gs_layout-cwidth_opt = 'A'.
+  gs_layout-sel_mode   = 'D'.
+
+  PERFORM set_fcat USING :
+  'X' 'MATNR'     ' '     'MARA'    'MATNR',
+  ' ' 'MAKTX'     ' '     'MAKT'    'MAKTX',
+  ' ' 'MENGE'     ' '     'MSEG'    'MENGE',
+  ' ' 'MEINS'     ' '     'MARA'    'MEINS',
+  ' ' 'NETPR'     ' '     'VBAP'    'NETPR',
+  ' ' 'WAERS'     ' '     'VBAP'    'WAERK'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM set_fcat  USING p_key p_field p_text p_ref_table p_ref_field.
+
+  gs_fcat-key       = p_key.
+  gs_fcat-fieldname = p_field.
+  gs_fcat-coltext   = p_text.
+  gs_fcat-ref_table = p_ref_table.
+  gs_fcat-ref_field = p_ref_field.
+
+  CASE p_field.
+    WHEN 'MENGE'.
+      gs_fcat-qfieldname = 'MEINS'.
+
+    WHEN 'NETPR'.
+      gs_fcat-cfieldname = 'WAERS'.
+
+  ENDCASE.
+
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_screen .
+
+  CREATE OBJECT gcl_docking_container
+    EXPORTING
+      repid     = sy-repid
+      dynnr     = sy-dynnr
+      side      = cl_gui_docking_container=>dock_at_left
+      extension = 5000.
+
+  CREATE OBJECT gcl_grid
+    EXPORTING
+      i_parent = gcl_docking_container.
+
+  gs_variant-report = sy-repid.
+
+  CALL METHOD gcl_grid->set_table_for_first_display
+    EXPORTING
+      i_bypassing_buffer = 'X'
+      i_buffer_active    = 'X'
+      is_layout          = gs_layout
+      i_save             = 'A'
+      i_default          = 'X'
+      is_variant         = gs_variant
+    CHANGING
+      it_outtab          = gt_data
+      it_fieldcatalog    = gt_fcat.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

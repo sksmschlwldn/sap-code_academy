@@ -1,0 +1,35 @@
+*&---------------------------------------------------------------------*
+*& Include SAPMZLKW_YENA_SAMPLE01_TOP               - Module Pool      SAPMZLKW_YENA_SAMPLE01
+*&---------------------------------------------------------------------*
+PROGRAM sapmzlkw_yena_sample01 MESSAGE-ID oo.
+
+TABLES : sflight.
+
+CONTROLS gc_tab TYPE TABSTRIP.
+
+DATA : gv_pressed TYPE sy-ucomm VALUE 'SCR01',
+       gv_screen  TYPE sy-dynnr.
+
+DATA : gt_data   TYPE TABLE OF sflight,
+       gv_okcode TYPE sy-ucomm.
+
+* 1st Tab 관련 Object
+DATA : gcl_container_1 TYPE REF TO cl_gui_custom_container,
+       gcl_splitter    TYPE REF TO cl_gui_splitter_container,
+       gcl_container_l TYPE REF TO cl_gui_container,
+       gcl_container_r TYPE REF TO cl_gui_container,
+       gcl_grid_1      TYPE REF TO cl_gui_alv_grid,
+       gcl_calendar_1  TYPE REF TO cl_gui_calendar,
+       gs_fcat         TYPE lvc_s_fcat,
+       gt_fcat         TYPE lvc_t_fcat,
+       gs_layout       TYPE lvc_s_layo,
+       gs_variant      TYPE disvariant.
+
+* 2nd Tab 관련 Object
+DATA : gcl_container_2 TYPE REF TO cl_gui_custom_container,
+       gcl_container_3 TYPE REF TO cl_gui_custom_container,
+       gcl_grid_2      TYPE REF TO cl_gui_alv_grid,
+       gcl_calendar_2  TYPE REF TO cl_gui_calendar.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

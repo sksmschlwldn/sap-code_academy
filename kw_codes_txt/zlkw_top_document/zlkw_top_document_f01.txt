@@ -1,0 +1,283 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_TOP_DOCUMENT_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form get_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_data .
+
+  REFRESH gt_data.
+
+  SELECT carrid carrname currcode url
+    INTO CORRESPONDING FIELDS OF TABLE gt_data
+    FROM scarr
+   WHERE carrid IN so_carr.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Data not found'.
+    LEAVE LIST-PROCESSING.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fcat_layout .
+
+  gs_layout-zebra      = 'X'.
+  gs_layout-cwidth_opt = 'A'.
+  gs_layout-sel_mode   = 'D'.
+
+  PERFORM make_fcat USING :
+  'X'   'CARRID'    ' '   'SCARR'   ' ',
+  ' '   'CARRNAME'  ' '   'SCARR'   ' ',
+  ' '   'CURRCODE'  ' '   'SCARR'   ' ',
+  ' '   'URL'       ' '   'SCARR'   ' '.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM make_fcat  USING pv_key pv_field pv_text pv_ref_table pv_ref_field.
+
+  gs_fcat-key       = pv_key.
+  gs_fcat-fieldname = pv_field.
+  gs_fcat-coltext   = pv_text.
+  gs_fcat-ref_table = pv_ref_table.
+  gs_fcat-ref_field = pv_ref_field.
+
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR  gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_alv
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_alv .
+
+  gs_variant-report = sy-repid.
+
+  CREATE OBJECT gcl_docking_container
+    EXPORTING
+      repid     = sy-repid
+      dynnr     = sy-dynnr
+      side      = cl_gui_docking_container=>dock_at_left
+      extension = 5000.
+
+  CREATE OBJECT gcl_splitter
+    EXPORTING
+      parent  = gcl_docking_container
+      rows    = 2
+      columns = 1.
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = gcl_top_container.
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 2
+      column    = 1
+    RECEIVING
+      container = gcl_alv_container.
+
+  CALL METHOD gcl_splitter->set_row_height
+    EXPORTING
+      id     = 1
+      height = 15.
+
+  CREATE OBJECT gcl_document_top
+    EXPORTING
+      style            = 'ALV_TO_HTML'
+      background_color = 1
+      no_margins       = space.
+
+  PERFORM set_document USING gcl_document_top.
+
+  CREATE OBJECT gcl_grid
+    EXPORTING
+      i_parent = gcl_alv_container.
+
+  CALL METHOD gcl_grid->set_table_for_first_display
+    EXPORTING
+      is_layout       = gs_layout
+      i_save          = 'A'
+      i_default       = 'X'
+      is_variant      = gs_variant
+    CHANGING
+      it_outtab       = gt_data
+      it_fieldcatalog = gt_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_document
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GCL_DOCUMENT_TOP
+*&---------------------------------------------------------------------*
+FORM set_document  USING pcl_document TYPE REF TO cl_dd_document.
+
+  DATA : lcl_table TYPE REF TO cl_dd_table_element,
+         lcl_col1  TYPE REF TO cl_dd_area,
+         lcl_col2  TYPE REF TO cl_dd_area,
+         lcl_col3  TYPE REF TO cl_dd_area,
+         lcl_col4  TYPE REF TO cl_dd_area.
+
+  DATA : lv_text TYPE sdydo_text_element.
+
+  CALL METHOD pcl_document->add_text
+    EXPORTING
+      text         = '결재상태조회'
+      sap_fontsize = cl_dd_document=>large
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background_inv.
+
+  CALL METHOD pcl_document->new_line.
+  CALL METHOD pcl_document->new_line.
+
+  CALL METHOD pcl_document->add_table
+    EXPORTING
+      no_of_columns               = 4
+      cell_background_transparent = 'X'
+      with_heading                = space
+      border                      = '0'
+    IMPORTING
+      table                       = lcl_table.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '5'
+    IMPORTING
+      column = lcl_col1.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '60'
+    IMPORTING
+      column = lcl_col2.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '10'
+    IMPORTING
+      column = lcl_col3.
+
+  CALL METHOD lcl_table->add_column
+    EXPORTING
+      width  = '20'
+    IMPORTING
+      column = lcl_col4.
+
+  CALL METHOD lcl_col1->add_icon
+    EXPORTING
+      sap_icon = 'ICON_LED_GREEN'.
+
+  lv_text = '결재승인 : '.
+  CALL METHOD lcl_col2->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong
+*     sap_fontsize = cl_dd_area=>list_heading_int
+      sap_color    = cl_dd_area=>list_background.
+
+  IF gv_text IS INITIAL.
+    gv_text = '20'.
+  ENDIF.
+
+  CALL METHOD lcl_col3->add_text
+    EXPORTING
+      text         = gv_text
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background.
+
+  lv_text = '건'.
+  CALL METHOD lcl_col4->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_group_int.
+
+  CALL METHOD lcl_table->new_row.
+
+  CALL METHOD lcl_col1->add_icon
+    EXPORTING
+      sap_icon = 'ICON_LED_YELLOW'.
+
+  lv_text = '결재대기 :'.
+  CALL METHOD lcl_col2->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background.
+
+  gv_text += '10'.
+  CALL METHOD lcl_col3->add_text
+    EXPORTING
+      text         = gv_text
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background.
+
+  lv_text = '건'.
+  CALL METHOD lcl_col4->add_text
+    EXPORTING
+      text         = lv_text
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_background.
+
+  CALL METHOD pcl_document->merge_document.
+
+  CALL METHOD pcl_document->display_document
+    EXPORTING
+      reuse_control      = 'X'
+      parent             = gcl_top_container
+    EXCEPTIONS
+      html_display_error = 1.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_top
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_top .
+
+  gv_text = '70'.
+
+  CALL METHOD gcl_document_top->initialize_document.
+
+  PERFORM set_document USING gcl_document_top.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

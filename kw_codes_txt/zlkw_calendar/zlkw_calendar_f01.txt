@@ -1,0 +1,114 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZLKW_CALENDAR_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form create_calendar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_calendar .
+
+  CREATE OBJECT gcl_container
+    EXPORTING
+      container_name = 'GCL_CONTAINER'.
+
+  CREATE OBJECT gcl_splitter
+    EXPORTING
+      parent  = gcl_container
+      rows    = 3
+      columns = 1.
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 1
+      column    = 1
+    RECEIVING
+      container = gcl_container_t.
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 2
+      column    = 1
+    RECEIVING
+      container = gcl_container_b.
+
+  CALL METHOD gcl_splitter->get_container
+    EXPORTING
+      row       = 3
+      column    = 1
+    RECEIVING
+      container = gcl_container_p.
+
+  CREATE OBJECT gcl_calendar_t
+    EXPORTING
+      parent     = gcl_container_t
+      view_style = cnca_style_v_navigator + cnca_style_dtpicker.
+
+  CREATE OBJECT gcl_calendar_b
+    EXPORTING
+      parent     = gcl_container_b
+      view_style = cnca_style_h_navigator.
+
+  CREATE OBJECT gcl_calendar_p
+    EXPORTING
+      parent     = gcl_container_p
+      view_style = cnca_style_popup_navigator.
+
+  gt_event = VALUE #(
+                      ( eventid = cl_gui_calendar=>m_id_date_selected )
+                    ).
+
+  CALL METHOD gcl_calendar_t->set_registered_events
+    EXPORTING
+      events = gt_event.
+
+  CALL METHOD gcl_calendar_b->set_registered_events
+    EXPORTING
+      events = gt_event.
+
+  SET HANDLER : lcl_event_handler=>handle_calendar_t FOR gcl_calendar_t,
+                lcl_event_handler=>handle_calendar_b FOR gcl_calendar_b.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_calendar
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> DATE_BEGIN
+*&      --> DATE_END
+*&      --> SELECTION_TABLE
+*&---------------------------------------------------------------------*
+FORM handle_calendar_t  USING pv_begin TYPE cnca_utc_date
+                              pv_end   TYPE cnca_utc_date
+                              pt_sel   TYPE cnca_itab_selection.
+
+  READ TABLE  pt_sel INTO DATA(ps_sel) INDEX 1.
+
+  MESSAGE i000 WITH pv_begin pv_end ps_sel-date.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_calendar_b
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> DATE_BEGIN
+*&      --> DATE_END
+*&      --> SELECTION_TABLE
+*&---------------------------------------------------------------------*
+FORM handle_calendar_b  USING pv_begin TYPE cnca_utc_date
+                              pv_end   TYPE cnca_utc_date
+                              pt_sel   TYPE cnca_itab_selection.
+
+  READ TABLE  pt_sel INTO DATA(ps_sel) INDEX 1.
+
+  MESSAGE i000 WITH pv_begin pv_end ps_sel-date.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

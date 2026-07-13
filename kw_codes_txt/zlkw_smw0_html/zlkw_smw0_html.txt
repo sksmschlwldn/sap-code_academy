@@ -1,0 +1,26 @@
+*&---------------------------------------------------------------------*
+*& Module Pool      ZLKW_SMW0_HTML
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE ZLKW_SMW0_HTML_TOP               .    " Global Data
+
+INCLUDE ZLKW_SMW0_HTML_C01               .  " Local Class
+INCLUDE ZLKW_SMW0_HTML_O01               .  " PBO-Modules
+INCLUDE ZLKW_SMW0_HTML_I01               .  " PAI-Modules
+INCLUDE ZLKW_SMW0_HTML_F01               .  " FORM-Routines
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [C5] SMW0 with HTML Sample
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

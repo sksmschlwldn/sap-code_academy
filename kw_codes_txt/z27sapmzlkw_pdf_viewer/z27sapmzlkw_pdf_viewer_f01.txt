@@ -1,0 +1,162 @@
+*&---------------------------------------------------------------------*
+*& Include          SAPMZLKW_PDF_VIEWER_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form get_file
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_file .
+
+  CALL FUNCTION 'WS_FILENAME_GET'
+    EXPORTING
+      def_path         = 'C:/'
+      mask             = ',*.pdf;*.pdf,*.pdf;*.pdf,'
+      mode             = 'O'
+    IMPORTING
+      filename         = gv_file
+    EXCEPTIONS
+      inv_winsys       = 1
+      no_batch         = 2
+      selection_cancel = 3
+      selection_error  = 4
+      OTHERS           = 5.
+
+  IF sy-subrc <> 0.
+    MESSAGE s000 WITH TEXT-e01. "파일선택이 취소 되었습니다.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_display
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM create_display .
+
+  CREATE OBJECT gcl_container
+    EXPORTING
+      container_name = 'GCL_CONTAINER'.
+
+  CREATE OBJECT gcl_pdf_viewer
+    EXPORTING
+      parent = gcl_container.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form pdf_display
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM pdf_display .
+
+  DATA : lv_path TYPE string,
+         lv_url  TYPE swk_url.
+
+  IF gv_file IS INITIAL.
+    MESSAGE s000 WITH 'First, File Upload' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  lv_path = gv_file.
+
+  CALL FUNCTION 'GUI_UPLOAD'
+    EXPORTING
+      filename = lv_path
+      filetype = 'BIN'
+    TABLES
+      data_tab = gt_pdf.
+
+  CALL METHOD gcl_pdf_viewer->load_data
+    EXPORTING
+      type         = 'BIN'
+      subtype      = 'PDF'
+    IMPORTING
+      assigned_url = lv_url
+    CHANGING
+      data_table   = gt_pdf.
+
+  CALL METHOD gcl_pdf_viewer->show_url( lv_url ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form collapse_con
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM collapse_con .
+
+  gcl_container->set_visible( visible = space ).
+
+*  gcl_container->set_mode( mode = 1 ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form expand_con
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM expand_con .
+
+  gcl_container->set_visible( visible = 'X' ).
+*  gcl_container->set_mode( mode = 0 ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form modify_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM modify_screen .
+
+  DATA : lv_active VALUE '0'.
+
+  LOOP AT SCREEN.
+
+    CASE gv_okcode.
+      WHEN 'COLLAPSE'.
+
+        CASE screen-group1.
+          WHEN 'PDF'.
+            screen-active = '0'.
+            MODIFY SCREEN.
+
+            lv_active = '1'.
+
+        ENDCASE.
+
+    ENDCASE.
+
+* Screen의 그룹이 EXP(펴는버튼그룹) 일경우에는 위에 접는것에 의해서
+* 바뀐 lv_active 의 값으로 서로 active 상태를 반대로 해줌
+    CASE screen-group1.
+      WHEN 'EXP'.
+        screen-active = lv_active.
+        MODIFY SCREEN.
+
+    ENDCASE.
+
+  ENDLOOP.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

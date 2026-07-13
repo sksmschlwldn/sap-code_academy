@@ -1,0 +1,209 @@
+*&---------------------------------------------------------------------*
+*& Report ZLKW_EMAIL_TEST
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT zlkw_email_test MESSAGE-ID oo.
+
+DATA : gv_file_type TYPE rlgrap-filetype,
+       gt_objbin    TYPE TABLE OF solisti1.
+
+PARAMETERS : pa_file  TYPE string,
+             pa_email TYPE adr6-smtp_addr.
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR pa_file.
+  PERFORM get_file.
+
+
+START-OF-SELECTION.
+
+  DATA : ls_docu        TYPE sodocchgi1,
+         lv_type        TYPE soextreci1-adr_typ,
+         ls_pack        TYPE sopcklsti1,
+         lt_pack        LIKE TABLE OF ls_pack,
+         lt_contents    TYPE TABLE OF solisti1,
+         lt_objhead     TYPE TABLE OF solisti1,
+
+         ls_receiver    TYPE somlreci1,
+         lt_receiver    LIKE TABLE OF ls_receiver,
+         lv_cnt         TYPE so_bd_num,
+
+         lv_file_name   TYPE rlgrap-filename,
+         lv_mail_file   TYPE string,
+         lv_doc_type(3).
+
+  CLEAR   : ls_docu, lv_type, ls_pack, ls_receiver, lv_cnt.
+  REFRESH : lt_pack, lt_contents, lt_receiver.
+
+* Email 본문
+  APPEND '이것은'         TO lt_contents.
+  APPEND 'Email 전송'     TO lt_contents.
+  APPEND '테스트 입니다.' TO lt_contents.
+  APPEND '잘 갔나?'       TO lt_contents.
+
+  lv_cnt = lines( lt_contents ).
+
+  ls_docu-obj_name   = 'EMAILTEST'.
+  ls_docu-obj_descr  = '이메일 전송 테스트 with 파일첨부3'. "Email Title
+*ls_docu-sensitivty = 'G'. "Business Type
+*ls_docu-expiry_dat = sy-datum.
+  ls_docu-doc_size   = lv_cnt * 255.
+
+  ls_pack-head_start = 1.
+  ls_pack-body_start = 1.
+  ls_pack-body_num   = lv_cnt.
+*ls_pack-doc_type   = 'HTM'. "메일내용을 HTML 코드 사용
+  ls_pack-doc_type   = 'RAW'. "일반 내용
+  ls_pack-obj_descr  = '구매발주서 드립니다.'.
+  ls_pack-doc_size   = lv_cnt * 255.
+
+  APPEND ls_pack TO lt_pack.
+  CLEAR  ls_pack.
+
+  ls_receiver-receiver = pa_email.
+  ls_receiver-rec_type = 'U'.
+
+  APPEND ls_receiver TO lt_receiver.
+  CLEAR  ls_receiver.
+
+* Attache File 이 있었으면
+  IF gt_objbin IS NOT INITIAL.
+
+    APPEND pa_file TO lt_objhead.
+
+    CLEAR lv_cnt.
+    lv_cnt = lines( gt_objbin ).
+
+    SPLIT pa_file AT '.' INTO pa_file lv_doc_type.
+
+    CONCATENATE sy-datum+4(4) '_TEST.' lv_doc_type
+              INTO lv_mail_file. " 첨부에 사용될 파일명
+
+    ls_pack-transf_bin = 'X'.               " 이진형식의 전송을 위한 플래그
+    ls_pack-head_start = 1.                 " 본문의 시작
+    ls_pack-head_num   = 0.                 " 본문 헤더라인 수
+    ls_pack-body_start = 1.                 " 첨부파일 본문의 시작
+    ls_pack-doc_size   = lv_cnt * 255.
+    ls_pack-body_num   = lv_cnt.            " 첨부 파일 본문의 길이
+    ls_pack-doc_type   = lv_doc_type.       " 문서타입
+    ls_pack-obj_name   = 'Attache file'.        " 객체이름
+    ls_pack-obj_descr  = lv_mail_file.      "파일이름
+
+    APPEND ls_pack TO lt_pack.
+
+  ENDIF.
+
+  CALL FUNCTION 'SO_DOCUMENT_SEND_API1'
+    EXPORTING
+      document_data              = ls_docu
+      put_in_outbox              = 'X'
+*     sender_address             = sy-uname
+*     sender_address_type        = 'INT'
+      commit_work                = 'X'
+    TABLES
+      packing_list               = lt_pack
+      contents_txt               = lt_contents
+      receivers                  = lt_receiver
+      contents_bin               = gt_objbin
+      object_header              = lt_objhead
+    EXCEPTIONS
+      too_many_receivers         = 1
+      document_not_sent          = 2
+      document_type_not_exist    = 3
+      operation_no_authorization = 4
+      parameter_error            = 5
+      x_error                    = 6
+      enqueue_error              = 7
+      OTHERS                     = 8.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH 'Email 전송 실패' DISPLAY LIKE 'E'.
+  ELSE.
+    MESSAGE s000 WITH 'Email 전송 성공'.
+  ENDIF.
+
+*&---------------------------------------------------------------------*
+*& Form get_file
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_file .
+
+  CLEAR   gv_file_type.
+  REFRESH gt_objbin.
+
+*  CALL FUNCTION 'UPLOAD'
+*    EXPORTING
+*      filetype     = 'BIN'
+*    IMPORTING
+*      act_filename = pa_file
+*      act_filetype = gv_file_type
+*    TABLES
+*      data_tab     = gt_objbin.
+
+  CALL FUNCTION 'WS_FILENAME_GET'
+    EXPORTING
+      def_path         = 'C:/'
+      mask             = ',*.xls;*.xlsx,*.xls;*.xlsx,*.pdf;*.pdf,*.pdf;*.pdf,'
+      mode             = 'O'
+    IMPORTING
+      filename         = pa_file
+    EXCEPTIONS
+      inv_winsys       = 1
+      no_batch         = 2
+      selection_cancel = 3
+      selection_error  = 4
+      OTHERS           = 5.
+
+  IF sy-subrc NE 0.
+    MESSAGE s000 WITH '파일선택을 취소했습니다'.
+    EXIT.
+  ENDIF.
+
+  CALL FUNCTION 'GUI_UPLOAD'
+    EXPORTING
+      filename                = pa_file
+      filetype                = 'BIN'
+*    IMPORTING
+*     filelength              = gv_size
+    TABLES
+      data_tab                = gt_objbin
+    EXCEPTIONS
+      file_open_error         = 1
+      file_read_error         = 2
+      no_batch                = 3
+      gui_refuse_filetransfer = 4
+      invalid_type            = 5
+      no_authority            = 6
+      unknown_error           = 7
+      bad_data_format         = 8
+      header_not_allowed      = 9
+      separator_not_allowed   = 10
+      header_too_long         = 11
+      unknown_dp_error        = 12
+      access_denied           = 13
+      dp_out_of_memory        = 14
+      disk_full               = 15
+      dp_timeout              = 16
+      OTHERS                  = 17.
+
+ENDFORM.
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_EMAIL D       .
+* PA_FILE         Attach File
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

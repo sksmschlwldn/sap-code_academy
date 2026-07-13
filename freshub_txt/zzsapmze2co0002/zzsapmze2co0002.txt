@@ -1,0 +1,37 @@
+*&---------------------------------------------------------------------*
+*& Module Pool      SAPMZE2CO0002
+*&---------------------------------------------------------------------*
+*&
+*& Title : [CO] 표준원가 산정 및 조회
+*& Author : 최지우 (NCODE-E-27)
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE ZZSAPMZE2CO0002_TOP.
+*INCLUDE sapmze2co0002_top                       .    " Global Data
+
+INCLUDE ZZSAPMZE2CO0002_C01.
+*INCLUDE sapmze2co0002_c01                       .  " Local Class
+INCLUDE ZZSAPMZE2CO0002_O01.
+*INCLUDE sapmze2co0002_o01                       .  " PBO-Modules
+INCLUDE ZZSAPMZE2CO0002_I01.
+*INCLUDE sapmze2co0002_i01                       .  " PAI-Modules
+INCLUDE ZZSAPMZE2CO0002_F01.
+*INCLUDE sapmze2co0002_f01                       .  " FORM-Routines
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [CO] 표준원가 산정
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: Hard coded
+*   정상적으로 처리되었으며 결산 진도표가 업데이트 되었습니다.
+*
+* Message class: ZPE2M
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

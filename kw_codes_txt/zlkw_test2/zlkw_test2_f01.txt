@@ -1,0 +1,91 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_TEST2_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form make_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM make_number CHANGING pv_invno TYPE zc5lkwt0001-inv_no.
+
+  DATA : lv_num(7) TYPE n,
+         lv_range  TYPE inri-nrrangenr VALUE '02',
+         lv_obj    TYPE inri-object    VALUE 'ZC531_TEST'.
+
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = lv_range
+      object      = lv_obj
+    IMPORTING
+      number      = lv_num.
+
+  CONCATENATE 'INV' lv_num INTO pv_invno.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_data_by_batch
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM make_data_by_batch .
+
+  DATA : ls_data  TYPE zc5lkwt0001,
+         lv_invno TYPE zc5lkwt0001-inv_no.
+
+  CLEAR : ls_data, lv_invno.
+
+  PERFORM make_number CHANGING lv_invno.
+
+  IF lv_invno IS INITIAL.
+    lv_invno = 'INV3000000'.
+  ENDIF.
+
+  ls_data = VALUE #(
+                      inv_no = lv_invno
+                      text   = | INVOICE { lv_invno } |
+                   ).
+
+  MODIFY zc5lkwt0001 FROM ls_data.
+
+  IF sy-dbcnt > 0.
+    COMMIT WORK AND WAIT.
+    MESSAGE s000 WITH 'Data saved'.
+  ELSE.
+    ROLLBACK WORK.
+    MESSAGE s000 WITH 'Data save failed' DISPLAY LIKE 'E'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_cds
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_cds .
+
+  DATA : BEGIN OF ls_cds,
+           matnr TYPE mara-matnr,
+           divd  TYPE p DECIMALS 2,
+         END OF ls_cds,
+
+         lt_cds LIKE TABLE OF ls_cds.
+
+  SELECT *
+    INTO CORRESPONDING FIELDS OF TABLE @lt_cds
+    FROM zc531CDS0001.
+
+  cl_demo_output=>display( lt_cds ).
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

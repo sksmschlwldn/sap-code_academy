@@ -1,0 +1,33 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_ALV_TREE_C01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Class lcl_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION FINAL.
+  PUBLIC SECTION.
+    METHODS :
+      handle_double_click FOR EVENT node_double_click OF cl_gui_alv_tree
+        IMPORTING
+          node_key.
+
+ENDCLASS.
+*&---------------------------------------------------------------------*
+*& Class (Implementation) lcl_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler IMPLEMENTATION.
+
+  METHOD handle_double_click.
+
+    PERFORM handle_double_click USING node_key.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

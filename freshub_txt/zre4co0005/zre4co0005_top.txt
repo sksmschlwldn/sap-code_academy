@@ -1,0 +1,215 @@
+*&---------------------------------------------------------------------*
+*& Include ZRE4CO0005_TOP                           - Report ZRE4CO0005
+*&---------------------------------------------------------------------*
+REPORT zre4co0005 MESSAGE-ID zpe4_mg.
+
+**********************************************************************
+* Controls
+**********************************************************************
+CONTROLS go_tab TYPE TABSTRIP.
+
+DATA : gv_subscreen  TYPE sy-dynnr VALUE '0501',      " 현재 호출 중인 서브스크린 번호
+       gv_pressedtab TYPE sy-ucomm VALUE 'SEND_RECV'. " 현재 활성화된(눌린) 탭의 OK_CODE
+
+DATA : gv_active1,                           " Tab 1 활성화 플래그
+       gv_active2.                           " Tab 2 활성화 플래그
+
+**********************************************************************
+* Class Instance
+**********************************************************************
+*-- Container
+DATA : go_cont_cycle       TYPE REF TO cl_gui_custom_container,       " 배부 사이클 컨테이너
+       go_cont_segment     TYPE REF TO cl_gui_custom_container,       " 배부 세그먼트 컨테이너
+       go_cont_detail_info TYPE REF TO cl_gui_custom_container,       " 팝업 안내사항 컨테이너
+       go_cont_list        TYPE REF TO cl_gui_custom_container,       " 기본 리스트 컨테이너
+       go_cont_send_recv   TYPE REF TO cl_gui_custom_container,       " 센더 및 리시버 레포트 컨테이너
+       go_cont_journal     TYPE REF TO cl_gui_custom_container,       " 분개장 레포트 컨테이너
+       go_cont_tree        TYPE REF TO cl_gui_custom_container.       " ALV Tree 컨테이너
+
+*-- ALV
+DATA : go_alv_cycle     TYPE REF TO cl_gui_alv_grid,                  " 배부 사이클 ALV
+       go_alv_segment   TYPE REF TO cl_gui_alv_grid,                  " 배부 세그먼트 ALV
+       go_alv_send_recv TYPE REF TO cl_gui_alv_grid,                  " 센더 및 리시버 레포트 ALV
+       go_alv_journal   TYPE REF TO cl_gui_alv_grid,                  " 분개장 레포트 ALV
+
+       go_alv_tree      TYPE REF TO cl_gui_alv_tree.                  " ALV Tree
+
+*-- Document Obejct
+DATA : go_document          TYPE REF TO cl_dd_document,                 " 동적 HTML 문서 생성 객체
+       go_document_result_1 TYPE REF TO cl_dd_document,                 " 기본 리스트 출력을 위한 HTML 문서
+       go_document_result_2 TYPE REF TO cl_dd_document.                 " 기본 리스트 출력을 위한 HTML 문서
+
+*-- HTML Viewer
+*DATA : go_html_control TYPE REF TO cl_gui_html_viewer.                " Error Table 출력을 위한 HTML Viewer
+
+**********************************************************************
+* Internal Table & Work Area
+**********************************************************************
+*-- Default Value
+DATA : BEGIN OF gs_default,
+         kokrs TYPE zte4co0001-kokrs,
+         bezei TYPE zte4co0001-bezei,
+       END OF gs_default.
+
+*-- Parameter
+DATA : BEGIN OF gs_param,
+         s_mon TYPE zee4_co_poper,
+         e_mon TYPE zee4_co_poper,
+         gjahr TYPE zee4_co_gjahr,
+       END OF gs_param.
+
+*-- Allocation Cycle
+DATA : gs_cycle          TYPE zte4co0012,
+
+       gt_cycle          LIKE TABLE OF gs_cycle,
+
+       gt_selected_cycle LIKE STANDARD TABLE OF gs_cycle
+                         WITH NON-UNIQUE KEY mandt cycle sdate.
+
+*-- Allocation Segment
+DATA : BEGIN OF gs_segment.
+         INCLUDE TYPE zte4co0013.
+DATA :   s_kostl_txt      TYPE zte4co0003-ktext,
+         r_kostl_txt      TYPE zte4co0003-ktext,
+         r_prctr_txt      TYPE zte4co0002-ktext,
+         s_hkont_low_txt  TYPE zte4fi0001-txt20,
+         s_hkont_high_txt TYPE zte4fi0001-txt20,
+         KSTAR_txt        TYPE zte4fi0001-txt20,
+         skf_txt          TYPE zte4co0010-ktext,
+       END OF gs_segment,
+
+       gt_segment LIKE TABLE OF gs_segment.
+
+*-- 배부 결과 테이블 ( 출력 & 계산용 )
+DATA : gs_result       TYPE zse4co0001,
+
+       gt_result       LIKE STANDARD TABLE OF gs_result
+                       WITH EMPTY KEY,
+       gt_result_error LIKE STANDARD TABLE OF gs_result
+                       WITH EMPTY KEY,
+
+       gt_belnr        TYPE ztte4co0002.
+
+DATA : gs_send_recv TYPE zse4co0001,   " 배부 결과 구조체 필드
+
+       gt_send_recv LIKE STANDARD TABLE OF gs_send_recv
+                    WITH EMPTY KEY.
+
+*DATA : BEGIN OF gs_journal,
+*         " 전표 마스터 & 추적용 필드
+*         belnr    TYPE zee4_fi_belnr_d,      " 배부 전표번호
+*         cycle    TYPE zee4_co_cycle,        " 배부 사이클
+*         segm_no  TYPE zee4_co_segm_no,      " 세그먼트 번호
+*
+*         " 전표 라인 아이템용 필드
+*         shkzg    TYPE char10,               " 차대구분 ('대변(송신)' 또는 '차변(수신)')
+*         kstar    TYPE zee4_co_kstar,        " 계정과목 / 원가요소
+*         co_obj   TYPE c LENGTH 10,          " 배부 대상 객체 (S_KOSTL / R_KOSTL / R_PRCTR 통합)
+*         obj_typ  TYPE c LENGTH 2,           " 객체 유형 ('CC' 또는 'PC')
+*         obj_name TYPE c LENGTH 20,          " 객체 명칭 (팀명 또는 사업부명)
+*
+*         " 금액 및 통화
+*         recv_amt TYPE zee4_fi_fins_vwcur12, " 금액 (대변은 마이너스, 차변은 플러스 가공)
+*         waers    TYPE waers,                " 통화
+*       END OF gs_journal.
+
+DATA : BEGIN OF gs_journal,
+         cycle       TYPE zee4_co_cycle,         " 배부 사이클
+         segm_no     TYPE zee4_co_segm_no,       " 세그먼트 번호
+         belnr       TYPE zee4_fi_belnr_d,       " 전표 번호
+         docln       TYPE zee4_fi_docln6,        " 전표 아이템 번호
+         shkzg       TYPE char10,                " 차변 / 대변
+         kstar       TYPE zee4_co_kstar,         " 원가요소
+         kstar_txt   TYPE zee4_fi_txt20,         " 원가요소 설명
+         debit_amt   TYPE zee4_fi_fins_vwcur12,  " 차변 금액
+         credit_amt  TYPE zee4_fi_fins_vwcur12,  " 대변 금액
+         waers       TYPE waers,                 " 통화
+         s_kostl     TYPE zee4_co_kostl,         " 송신 코스트센터
+         s_kostl_txt TYPE zee4_co_ktext,         " 송신 코스트센터 설명
+         r_kostl     TYPE zee4_co_kostl,         " 수신 코스트센터
+         r_kostl_txt TYPE zee4_co_ktext,         " 수신 코스트센터 설명
+         r_prctr     TYPE zee4_co_prctr,         " 수신 프로핏센터
+         r_prctr_txt TYPE zee4_co_ktext,         " 수신 프로핏센터 설명
+       END OF gs_journal,
+
+       gt_journal LIKE STANDARD TABLE OF gs_journal.
+
+*-- ALV Tree 연동 테이블
+DATA : BEGIN OF gs_tree_node,
+         nkey     TYPE lvc_nkey,    " 시스템 트리 노드 제어용 고유 키 필드
+         node_key TYPE c LENGTH 10, " 내부 매핑용 키 (예: KOSTL 이나 SETID)
+         text     TYPE c LENGTH 20, " 화면에 표시될 코스트센터(그룹)명
+       END OF gs_tree_node.
+
+DATA : gt_tree_node LIKE STANDARD TABLE OF gs_tree_node
+                    WITH EMPTY KEY.
+
+*-- ALV Tree 계층구조 테이블
+DATA : BEGIN OF gs_hier.
+         INCLUDE TYPE zte4co0007. " 기존 DB 구조의 모든 필드 포함
+DATA :   nkey TYPE lvc_nkey,      " 트리 제어용 노드 키 필드 추가
+       END OF gs_hier,
+
+       gt_hier LIKE TABLE OF gs_hier WITH EMPTY KEY.
+
+*-- 송신 비용 집계용 테이블
+DATA : BEGIN OF gs_fi_base_costs,
+         s_kostl   TYPE zee4_co_kostl,
+         racct     TYPE zee4_fi_racct,
+         racct_txt TYPE zte4fi0001-txt20,
+         total_wsl TYPE zte4fi0003-wsl,
+       END OF gs_fi_base_costs.
+
+DATA: gt_fi_base_costs LIKE TABLE OF gs_fi_base_costs WITH EMPTY KEY.
+
+**********************************************************************
+* ALV Variables
+**********************************************************************
+DATA : gs_fcat           TYPE lvc_s_fcat,           " ALV 필드 속성 정의 구조체
+       gt_fcat_cycle     TYPE lvc_t_fcat,           " Cycle   ALV 필드 카탈로그 테이블
+       gt_fcat_segment_1 TYPE lvc_t_fcat,           " 1차 배부 Segment ALV 필드 카탈로그 테이블
+       gt_fcat_segment_2 TYPE lvc_t_fcat,           " 2차 배부 Segment ALV 필드 카탈로그 테이블
+       gt_fcat_send_recv TYPE lvc_t_fcat,           " 센더 및 리시버 필드 카탈로그 테이블
+       gt_fcat_journal   TYPE lvc_t_fcat,           " 분개장 필드 카탈로그 테이블
+       gt_fcat_tree      TYPE lvc_t_fcat,           " ALV Tree 필드 카탈로그 테이블
+       gs_layout         TYPE lvc_s_layo,           " ALV 레이아웃 설정 (Zebra, 색상 등)
+       gs_stable         TYPE lvc_s_stbl,           " ALV 스크롤 상태 유지용 구조체
+       gs_variant        TYPE disvariant,           " ALV 개인화 정보
+       gs_sort           TYPE lvc_s_sort,           " ALV 정렬
+       gt_sort_send_recv TYPE lvc_t_sort,           " 센더 및 리시버 ALV 정렬
+       gt_sort_journal   TYPE lvc_t_sort,           " 분개장 ALV 정렬
+       gs_kostl_filter   TYPE lvc_s_filt,
+       gt_kostl_filter   TYPE lvc_t_filt.
+
+**********************************************************************
+* Pop Up Screen
+**********************************************************************
+*-- Detail
+DATA : gv_detail_list(1),                                 " 기본리스트
+       gv_detail_sen_rec(1),                " 센더 및 리시버
+       gv_detail_journal(1).                " 분개장
+
+*-- Setting
+DATA : gv_db_selection(20),                 " 데이터베이스 선택
+       gv_save_extract(1),                  " 추출저장위치
+       gv_extract_id(20),                   " 클러스터 저장명
+       gv_exit_program(1)    VALUE 'X',     " 오류에 대한 절차 : 프로그램 종료
+       gv_simulation_mode(1),               " 오류에 대한 절차 : 시뮬레이션모드로 변경
+       gv_must_test(1).                     " 사이클 실행 그룹 : 테스트 필수
+
+**********************************************************************
+* Common Variables
+**********************************************************************
+DATA : gv_okcode     TYPE sy-ucomm,          " 화면 명령(Function Code) 수신 변수.
+       gs_gjahr_list TYPE vrm_value,         " gs_param-gjahr
+       gt_gjahr_list TYPE vrm_values,        " gs_param-gjahr
+       gs_poper_list TYPE vrm_value,         " gs_param-poper
+       gt_poper_list TYPE vrm_values,        " gs_param-poper
+       gv_e_mon      TYPE char5,
+       gv_back(1),                           " 백그라운드 처리
+       gv_test(1),                           " 테스트실행
+       gv_detail(1),                         " 세부사항리스트
+       gv_error(1).                          " 배부 중 에러 발생 유무 플래그
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

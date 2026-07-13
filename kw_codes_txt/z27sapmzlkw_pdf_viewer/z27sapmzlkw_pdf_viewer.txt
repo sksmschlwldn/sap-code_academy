@@ -1,0 +1,33 @@
+*&---------------------------------------------------------------------*
+*& Module Pool      SAPMZLKW_PDF_VIEWER
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE Z27SAPMZLKW_PDF_VIEWER_TOP.
+*INCLUDE sapmzlkw_pdf_viewer_top                 .    " Global Data
+
+INCLUDE Z27SAPMZLKW_PDF_VIEWER_O01.
+*INCLUDE sapmzlkw_pdf_viewer_o01                 .  " PBO-Modules
+INCLUDE Z27SAPMZLKW_PDF_VIEWER_I01.
+*INCLUDE sapmzlkw_pdf_viewer_i01                 .  " PAI-Modules
+INCLUDE Z27SAPMZLKW_PDF_VIEWER_F01.
+*INCLUDE sapmzlkw_pdf_viewer_f01                 .  " FORM-Routines
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [C5] PDF Upload and Viewer
+
+*Text elements
+*----------------------------------------------------------
+* E01 File upload canceled
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

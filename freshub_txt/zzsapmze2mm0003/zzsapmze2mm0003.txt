@@ -1,0 +1,35 @@
+*&---------------------------------------------------------------------*
+*& Module Pool      SAPMZE2MM0003
+*&---------------------------------------------------------------------*
+*&
+*& Title : [MM] 자재 통합 조회 및 수정
+*& Author : 최지우 (NCODE-E-27)
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE ZZSAPMZE2MM0003_TOP.
+*INCLUDE sapmze2mm0003_top                       .  " Global Data
+
+INCLUDE ZZSAPMZE2MM0003_C01.
+*INCLUDE sapmze2mm0003_c01                       .  " Local Class
+INCLUDE ZZSAPMZE2MM0003_O01.
+*INCLUDE sapmze2mm0003_o01                       .  " PBO-Modules
+INCLUDE ZZSAPMZE2MM0003_I01.
+*INCLUDE sapmze2mm0003_i01                       .  " PAI-Modules
+INCLUDE ZZSAPMZE2MM0003_F01.
+*INCLUDE sapmze2mm0003_f01                       .  " FORM-Routines
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [MM] 자재 통합 조회
+* T0101 --> 자재 생성 화면
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZPE2M
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

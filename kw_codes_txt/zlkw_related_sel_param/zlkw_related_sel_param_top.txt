@@ -1,0 +1,14 @@
+*&---------------------------------------------------------------------*
+*& Include ZLKW_RELATED_SEL_PARAM_TOP               - Report ZLKW_RELATED_SEL_OPTION
+*&---------------------------------------------------------------------*
+REPORT zlkw_related_sel_option MESSAGE-ID oo.
+
+DATA : BEGIN OF gs_input,
+         carrid TYPE spfli-carrid,
+         connid TYPE spfli-connid,
+       END OF gs_input,
+
+       gv_okcode TYPE sy-ucomm.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

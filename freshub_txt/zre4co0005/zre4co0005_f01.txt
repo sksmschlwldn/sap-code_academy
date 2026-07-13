@@ -1,0 +1,2872 @@
+*&---------------------------------------------------------------------*
+*& Include          ZRE4CO0005_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Form call_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM call_screen .
+
+  CASE 'X'.
+    WHEN pa_dist.
+      CALL SCREEN '0100'.
+    WHEN pa_asmt.
+      CALL SCREEN '0200'.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_init
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_param .
+
+  SELECT SINGLE kokrs, bezei
+    FROM zte4co0001
+   WHERE kokrs = '0001'
+    INTO @gs_default.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_popor
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_month .
+
+  REFRESH gt_poper_list.
+
+  " 로컬 날짜(sy-datlo)에서 현재 월만 바로 추출
+  DATA(lv_current_month) = sy-datlo+4(2).
+
+  " 이번 달까지만 리스트 생성
+  DO lv_current_month TIMES.
+    CLEAR gs_poper_list.
+
+    " Key: 001, 002... (DB 저장용)
+    gs_poper_list-key  = |{ sy-index WIDTH = 3 ALIGN = RIGHT PAD = '0' }|.
+
+    " Text: 1월, 2월... (화면 표시용)
+    gs_poper_list-text = |{ sy-index }월|.
+
+    APPEND gs_poper_list TO gt_poper_list.
+  ENDDO.
+
+  " S_MON 변수값이 비어있다면 초기값 설정
+  IF gs_param-s_mon IS INITIAL.
+    gs_param-s_mon = |{ lv_current_month WIDTH = 3 ALIGN = RIGHT PAD = '0' }|.
+  ENDIF.
+
+  " 기존 E_MON 로직은 그대로 유지
+  DATA(lv_now2) = sy-datlo+4(2).
+  gs_param-e_mon = |0{ lv_now2 }|.
+
+  " 리스트박스 세팅 (S_MON만 수행)
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id     = 'GS_PARAM-S_MON'
+      values = gt_poper_list.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_year
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_year .
+
+* DATA: lt_year_list TYPE vrm_values,
+* ls_year_list TYPE vrm_value.
+* DATA: lv_end_year   TYPE i VALUE 1996,
+* lv_start_year TYPE i.
+*
+* lv_start_year = sy-datlo(4).
+*
+* REFRESH lt_year_list.
+*
+* " 1996년부터 현재 연도까지 루프
+* WHILE lv_end_year <= lv_start_year.
+* CLEAR ls_year_list.
+*
+* ls_year_list-key  = |{ lv_start_year }|.
+*
+* ls_year_list-text = |{ lv_start_year }년|.
+*
+* APPEND ls_year_list TO lt_year_list.
+* lv_start_year = lv_start_year - 1.
+* ENDWHILE.
+*
+* " 리스트박스 세팅
+* CALL FUNCTION 'VRM_SET_VALUES'
+* EXPORTING
+* id     = 'GS_PARAM-GJAHR'  " 화면에 선언된 변수명
+* values = lt_year_list.
+
+  gs_param-gjahr = sy-datlo(4).
+  gv_e_mon       = |{ sy-datlo+4(2) }월|.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_init
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_init .
+
+  PERFORM set_param.
+  PERFORM set_year.
+  PERFORM set_default_value.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_asmt_data .
+
+  REFRESH gt_cycle.
+
+  SELECT cycle sdate edate ktext almeth
+    FROM zte4co0012
+    INTO CORRESPONDING FIELDS OF TABLE gt_cycle
+   WHERE almeth = 'A'
+     AND lvorm <> 'X'.
+
+  IF sy-subrc NE 0 .
+    MESSAGE s033 WITH '1차 배부 사이클' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_dist_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_dist_data .
+
+  REFRESH gt_cycle.
+
+  SELECT cycle sdate edate ktext almeth
+    FROM zte4co0012
+    INTO CORRESPONDING FIELDS OF TABLE gt_cycle
+   WHERE almeth = 'D'
+     AND lvorm <> 'X'.
+
+  IF sy-subrc NE 0 .
+    MESSAGE s033 WITH '1차 배부 사이클' DISPLAY LIKE 'E'.
+    STOP.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form check_month
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM check_month .
+
+  IF gs_param-s_mon > gs_param-e_mon.
+    MESSAGE s102 WITH '배부' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_screen
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_screen .
+
+*-- Container
+  go_cont_cycle   = NEW cl_gui_custom_container(
+    container_name = 'GO_CONT_CYCLE' ).
+
+  go_cont_segment = NEW cl_gui_custom_container(
+    container_name = 'GO_CONT_SEGMENT' ).
+
+*-- ALV
+  go_alv_cycle   = NEW cl_gui_alv_grid(
+    i_parent = go_cont_cycle ).
+
+  go_alv_segment = NEW cl_gui_alv_grid(
+    i_parent = go_cont_segment ).
+
+
+*-- Display Screen
+
+  SET HANDLER : gcl_event_handler=>handle_hotspot_click FOR go_alv_cycle.
+
+  gs_variant = VALUE #( report = sy-repid
+                        handle = 'CYC'    ).
+
+  go_alv_cycle->set_table_for_first_display(
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_cycle
+      it_fieldcatalog = gt_fcat_cycle ).
+
+  gs_variant = VALUE #( report = sy-repid
+                        handle = 'SEG'   ).
+
+  " 1, 2차 배부 분리
+  CASE sy-dynnr.
+
+    WHEN '0100'.
+      go_alv_segment->set_table_for_first_display(
+        EXPORTING
+          is_variant      = gs_variant
+          i_save          = 'A'
+          i_default       = 'X'
+          is_layout       = gs_layout
+        CHANGING
+          it_outtab       = gt_segment
+          it_fieldcatalog = gt_fcat_segment_1 ).
+
+    WHEN '0200'.
+      go_alv_segment->set_table_for_first_display(
+        EXPORTING
+          is_variant      = gs_variant
+          i_save          = 'A'
+          i_default       = 'X'
+          is_layout       = gs_layout
+        CHANGING
+          it_outtab       = gt_segment
+          it_fieldcatalog = gt_fcat_segment_2 ).
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fcat_layout .
+
+  gs_layout = VALUE #( zebra      = 'X'
+                       cwidth_opt = 'A'
+                       sel_mode   = 'D' ).
+
+  gs_stable = VALUE #( row = 'X'
+                       col = 'X' ).
+
+  PERFORM make_fcat_cycle USING : 'X'  'CYCLE'   ''  'ZTE4CO0012'  '',
+* 'X'  'SDATE'   ''  'ZTE4CO0012'  '',
+* ''   'EDATE'   ''  'ZTE4CO0012'  '',
+                                  ''   'KTEXT'   TEXT-f01  'ZTE4CO0012'  ''.
+* ''   'ALMETH'  ''  'ZTE4CO0012'  ''.
+
+  PERFORM make_fcat_segment_1 USING : 'X'  'SEGM_NO'       ''     'ZTE4CO0013'  '',
+                                      'X'  'SEGM_NAME'   TEXT-f02 'ZTE4CO0013'  '',
+                                      ''   'S_KOSTL'       ''     'ZTE4CO0013'  '',
+                                      ''   'S_KOSTL_TXT' TEXT-f04 ''            '',
+* ''   'S_HKONT_LOW' TEXT-f03 'ZTE4CO0013'  '',
+* ''   'S_HKONT_HIGH'  ''    'ZTE4CO0013'  '',
+                                      ''   'R_KOSTL'       ''     'ZTE4CO0013'  '',
+                                      ''   'R_KOSTL_TXT' TEXT-f07 'ZTE4CO0013'  '',
+                                      ''   'R_PRCTR'       ''     'ZTE4CO0013'  '',
+                                      ''   'R_PRCTR_TXT' TEXT-f08 'ZTE4CO0013'  '',
+* ''   'KSTAR'         ''     'ZTE4CO0013'  '',
+                                      ''   'KSTAR_TXT'   TEXT-f05 ''            '',
+* ''   'AL_SKF_ID'     ''     'ZTE4CO0013'  ''.
+                                      ''   'SKF_TXT'     TEXT-f06 ''            ''.
+
+  PERFORM make_fcat_segment_2 USING : 'X'  'SEGM_NO'       ''     'ZTE4CO0013'  '',
+                                      'X'  'SEGM_NAME'    TEXT-f02 'ZTE4CO0013'  '',
+* ''   'S_KOSTL'       ''     'ZTE4CO0013'  '',
+                                      ''   'S_KOSTL_TXT'  TEXT-f09 ''            '',
+                                      ''   'S_HKONT_LOW'  TEXT-f10 'ZTE4CO0013'  '',
+                                      ''   'S_HKONT_HIGH' TEXT-f12 'ZTE4CO0013'  '',
+* ''   'R_KOSTL'       ''     'ZTE4CO0013'  '',
+                                      ''   'R_KOSTL_TXT'  TEXT-f07 'ZTE4CO0013'  '',
+* ''   'R_PRCTR'       ''     'ZTE4CO0013'  '',
+                                      ''   'R_PRCTR_TXT'  TEXT-f08 'ZTE4CO0013'  '',
+                                      ''   'KSTAR'         ''     'ZTE4CO0013'  '',
+                                      ''   'KSTAR_TXT'    TEXT-f11 ''            '',
+* ''   'AL_SKF_ID'     ''     'ZTE4CO0013'  ''.
+                                      ''   'SKF_TXT'      TEXT-f06 ''            ''.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM make_fcat_cycle  USING  pv_key
+                             pv_field
+                             pv_text
+                             pv_ref_table
+                             pv_ref_field.
+
+  gt_fcat_cycle = VALUE #( BASE gt_fcat_cycle
+                           (  key        = pv_key
+                              fieldname  = pv_field
+                              coltext    = pv_text
+                              ref_table  = pv_ref_table
+                              ref_field  = pv_ref_field
+                              hotspot    = COND #( WHEN pv_field EQ 'CYCLE' THEN 'X' ) ) ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_popup
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_popup .
+
+*-- Container
+  go_cont_detail_info = NEW cl_gui_custom_container(
+    container_name = 'GO_CONT_DETAIL_INFO' ).
+
+*-- Document
+  go_document = NEW cl_dd_document(
+    style            = 'ALV_TO_HTML'
+    background_color = 1
+    no_margins       = space         ).
+
+*-- Display Screen
+  PERFORM set_document USING go_document.
+
+  go_document->display_document(
+    reuse_control = 'X'
+    parent        = go_cont_detail_info ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_document
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GO_DOCUMENT
+*&---------------------------------------------------------------------*
+FORM set_document  USING  po_document TYPE REF TO cl_dd_document.
+
+  DATA : lo_table TYPE REF TO cl_dd_table_element,
+         lo_col1  TYPE REF TO cl_dd_area,
+         lo_col2  TYPE REF TO cl_dd_area.
+
+  " 안내 사항 테이블
+  po_document->add_table(
+    EXPORTING
+      no_of_columns = 2
+      border        = '0'
+    IMPORTING
+      table         = lo_table
+  ).
+
+  lo_table->add_column( EXPORTING width = '20'  IMPORTING column = lo_col1 ).
+  lo_table->add_column( EXPORTING width = '400' IMPORTING column = lo_col2 ).
+
+  " --- 연도/월 확인 ---
+  lo_col1->add_icon( sap_icon = 'ICON_LIST' ).
+  lo_col2->add_text(
+    text = '기본리스트 : 전체적인 요약 통계 제공'
+   ).
+  lo_table->new_row( ).
+
+  " --- 저장 관련 ---
+  lo_col1->add_icon( sap_icon = 'ICON_RELATION' ).
+  lo_col2->add_text(
+    text         = '센더 및 리시버 : 송신처와 수신처 간의 상세 내역 제공'
+  ).
+  lo_table->new_row( ).
+
+  " --- 저장 관련 ---
+  lo_col1->add_icon( sap_icon = 'ICON_DOC_ITEM_DETAIL' ).
+  lo_col2->add_text(
+    text         = '분개장 : 배부 결과로 생성되는 개별 전표 정보 제공'
+  ).
+
+  " 마무리
+  po_document->merge_document( ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_fcat_segment_1
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM make_fcat_segment_1  USING  pv_key
+                                 pv_field
+                                 pv_text
+                                 pv_ref_table
+                                 pv_ref_field.
+
+  gt_fcat_segment_1 = VALUE #( BASE gt_fcat_segment_1
+                               (  key        = pv_key
+                                  fieldname  = pv_field
+                                  coltext    = pv_text
+                                  ref_table  = pv_ref_table
+                                  ref_field  = pv_ref_field ) ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_fcat_segment_2
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM make_fcat_segment_2  USING  pv_key
+                                 pv_field
+                                 pv_text
+                                 pv_ref_table
+                                 pv_ref_field.
+
+  gt_fcat_segment_2 = VALUE #( BASE gt_fcat_segment_2
+                               (  key        = pv_key
+                                  fieldname  = pv_field
+                                  coltext    = pv_text
+                                  ref_table  = pv_ref_table
+                                  ref_field  = pv_ref_field ) ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_hotspot_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> E_ROW_ID
+*&      --> E_COL_ID
+*&---------------------------------------------------------------------*
+FORM handle_hotspot_click  USING    ps_row TYPE lvc_s_row
+                                    ps_col TYPE lvc_s_col.
+
+  CHECK ps_row-rowtype IS INITIAL AND ps_row-index GT 0.
+
+  gs_cycle = gt_cycle[ ps_row-index ].
+
+  CALL FUNCTION 'SAPGUI_SET_FUNCTIONCODE'
+    EXPORTING
+      functioncode           = 'SEGMENT'
+    EXCEPTIONS
+      function_not_supported = 1
+      OTHERS                 = 2.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_segment_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_segment_data .
+
+  REFRESH gt_segment.
+
+  SELECT c13~segm_no c13~segm_name c13~s_kostl c13~s_hkont_low c13~s_hkont_high
+         c13~r_kostl c13~r_prctr   c13~kstar   c13~al_skf_id
+
+         c2~ktext AS r_prctr_txt
+
+         c3_1~ktext AS s_kostl_txt
+         c3_2~ktext AS r_kostl_txt
+
+         c10~ktext AS skf_txt
+
+         f1~txt20 AS kstar_txt
+
+    INTO CORRESPONDING FIELDS OF TABLE gt_segment
+    FROM zte4co0013 AS c13
+
+    LEFT OUTER JOIN zte4co0002 AS c2
+      ON c13~r_prctr = c2~prctr
+
+    LEFT OUTER JOIN zte4co0003 AS c3_1
+      ON c13~s_kostl = c3_1~kostl
+
+    LEFT OUTER JOIN zte4co0003 AS c3_2
+      ON c13~r_kostl = c3_2~kostl
+
+    LEFT OUTER JOIN zte4co0010 AS c10
+      ON c13~al_skf_id = c10~stagr
+
+    LEFT OUTER JOIN zte4fi0001 AS f1
+      ON c13~kstar = f1~saknr
+
+   WHERE cycle =  gs_cycle-cycle
+     AND sdate =  gs_cycle-sdate
+     AND lvorm <> 'X'
+
+ORDER BY segm_no.
+
+  IF sy-subrc NE 0.
+    MESSAGE s033 WITH '해당 사이클의 세그먼트' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_segment
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_segment .
+
+  go_alv_segment->refresh_table_display(
+    is_stable      = gs_stable
+    i_soft_refresh = space    ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_default_value
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_default_value_popup .
+
+  gv_detail_list = 'X'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_default_value
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_default_value .
+
+  gv_test   = 'X'.
+  gv_detail = 'X'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_db
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_db .
+
+  DATA: lt_db_list TYPE vrm_values,
+        ls_db_list TYPE vrm_value.
+
+  REFRESH lt_db_list.
+
+  CLEAR ls_db_list.
+  ls_db_list-key  = 'CYCLE'.
+  ls_db_list-text = '사이클에 의한 선택'.
+  APPEND ls_db_list TO lt_db_list.
+
+  CLEAR ls_db_list.
+  ls_db_list-key  = 'USAGE'.
+  ls_db_list-text = '사이클에 의한 활용선택'.
+  APPEND ls_db_list TO lt_db_list.
+
+  CLEAR ls_db_list.
+  ls_db_list-key  = 'SEGMENT'.
+  ls_db_list-text = '세그먼트별 선택'.
+  APPEND ls_db_list TO lt_db_list.
+
+  " 리스트박스 세팅
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id     = 'GV_DB_SELECTION'  " 화면에 선언된 변수명
+      values = lt_db_list.
+
+  gv_db_selection = 'CYCLE'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form check_background_job
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM check_background_job .
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form calculate_allocation_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM calculate_allocation_data .
+
+  DATA: lt_segments      LIKE TABLE OF gs_segment
+                         WITH EMPTY KEY,
+        lv_total_skf     TYPE zte4co0011-stsvl,    " 전체 SKF 합계
+        lv_recv_skf      TYPE zte4co0011-stsvl,    " 개별 리시버 SKF
+        lv_meins         TYPE zte4co0010-msehi,    " SFK 단위
+        lv_prev_alloc    TYPE zte4fi0003-wsl,      " 기배부액
+        lv_target_amt    TYPE zte4fi0003-wsl,      " 구간 전체 목표액
+        lv_current_alloc TYPE zte4fi0003-wsl,      " 당월 최종 배부액
+        lv_perc          TYPE p DECIMALS 2,        " 배부 비율 (%)
+        lv_prev_mon      TYPE monat.               " 기배부액 조회용
+
+  " 세그먼트 정보 일괄 조회
+  IF gt_selected_cycle IS INITIAL.
+    MESSAGE s036 WITH '배부 사이클' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  SELECT c13~cycle, c13~sdate, c13~segm_no, c13~segm_name,
+         c13~s_kostl, c13~s_hkont_low, c13~s_hkont_high,
+         c13~r_kostl, c13~r_prctr, c13~kstar, c13~al_skf_id,
+
+         c2~ktext AS r_prctr_txt,
+
+         c3_1~ktext AS s_kostl_txt,
+         c3_2~ktext AS r_kostl_txt,
+
+         c10~ktext AS skf_txt,
+
+         f1_1~txt20 AS s_hkont_low_txt,
+         f1_2~txt20 AS s_hkont_high_txt,
+         f1_3~txt20 AS kstar_txt
+
+    FROM zte4co0013 AS c13
+
+   INNER JOIN zte4co0002 AS c2
+      ON c13~r_prctr = c2~prctr
+
+   INNER JOIN zte4co0003 AS c3_1
+      ON c13~s_kostl = c3_1~kostl
+
+   INNER JOIN zte4co0003 AS c3_2
+      ON c13~r_kostl = c3_2~kostl
+
+   INNER JOIN zte4co0010 AS c10
+      ON c13~al_skf_id = c10~stagr
+
+   INNER JOIN zte4fi0001 AS f1_1
+      ON c13~s_hkont_low = f1_1~saknr
+
+   INNER JOIN zte4fi0001 AS f1_2
+      ON c13~s_hkont_high = f1_2~saknr
+
+   INNER JOIN zte4fi0001 AS f1_3
+      ON c13~kstar = f1_3~saknr
+
+   INNER JOIN @gt_selected_cycle AS sel
+      ON c13~cycle = sel~cycle
+     AND c13~sdate = sel~sdate
+
+    INTO CORRESPONDING FIELDS OF TABLE @lt_segments.
+
+  IF lt_segments IS INITIAL.
+    MESSAGE s033 WITH '등록된 배부 세그먼트' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  " 배부 대상 코스트센터별 순수 비용 잔액 조회
+  SELECT CASE
+           WHEN f3~drcrk = 'S' AND f3~r_kostl NE @space THEN f3~r_kostl
+           ELSE f3~s_kostl
+         END AS s_kostl,
+         f3~racct,
+         f1~txt20 AS racct_txt,
+         SUM( CAST( CASE f3~drcrk
+                      WHEN 'S' THEN f3~wsl
+                      WHEN 'H' THEN ( f3~wsl * -1 )
+                      ELSE 0
+                    END AS DEC( 31, 2 ) ) ) AS total_wsl
+     INTO CORRESPONDING FIELDS OF TABLE @gt_fi_base_costs
+     FROM zte4fi0003 AS f3
+    INNER JOIN zte4fi0002 AS f2 ON f3~rbukrs = f2~bukrs
+                               AND f3~gjahr  = f2~gjahr
+                               AND f3~belnr  = f2~belnr
+    INNER JOIN zte4fi0001 AS f1 ON f3~racct  = f1~saknr
+    WHERE f2~bukrs   = '0001'
+      AND f2~gjahr   = @gs_param-gjahr
+      AND f2~monat   = @gs_param-e_mon
+      AND f2~blart  <> 'CV'
+      AND ( f3~s_kostl NE '' OR f3~r_kostl NE '')
+      " 제조비/판관비
+      AND f3~racct   BETWEEN '700000' AND '899999'
+    GROUP BY CASE
+               WHEN f3~drcrk = 'S' AND f3~r_kostl NE @space THEN f3~r_kostl
+               ELSE f3~s_kostl
+             END,
+             f3~racct, f1~txt20.
+
+  DELETE gt_fi_base_costs WHERE total_wsl = 0.
+
+  REFRESH gt_result.
+
+  gt_result = VALUE #(
+      FOR ls_seg IN lt_segments
+      FOR ls_costs IN gt_fi_base_costs WHERE ( s_kostl = ls_seg-s_kostl
+                                           AND racct  >= ls_seg-s_hkont_low
+                                           AND racct  <= ls_seg-s_hkont_high
+                                           AND total_wsl <> 0 ) (
+        cycle            = ls_seg-cycle
+        segm_no          = ls_seg-segm_no
+        segm_name        = ls_seg-segm_name
+        s_kostl          = ls_seg-s_kostl
+        s_kostl_txt      = ls_seg-s_kostl_txt
+        s_hkont_low      = ls_costs-racct
+        s_hkont_low_txt  = ls_costs-racct_txt
+        s_hkont_high     = ls_costs-racct
+        s_hkont_high_txt = ls_costs-racct_txt
+        send_amt         = ls_costs-total_wsl
+        r_kostl          = ls_seg-r_kostl
+        r_kostl_txt      = ls_seg-r_kostl_txt
+        r_prctr          = ls_seg-r_prctr
+        r_prctr_txt      = ls_seg-r_prctr_txt
+        kstar            = ls_seg-kstar
+        kstar_txt        = ls_seg-kstar_txt
+        al_skf_id        = ls_seg-al_skf_id
+        skf_txt          = ls_seg-skf_txt
+        waers            = 'KRW'
+        alloc_type       = COND #( WHEN ls_seg-r_kostl IS INITIAL THEN 'PC' ELSE 'CC' )
+      )
+    ).
+
+  DATA: BEGIN OF ls_seg_total,
+          cycle        TYPE zte4co0013-cycle,
+          s_kostl      TYPE zte4co0013-s_kostl,
+          s_hkont_low  TYPE zte4co0013-s_hkont_low,
+          s_hkont_high TYPE zte4co0013-s_hkont_high,
+          total_wsl    TYPE zte4fi0003-wsl,
+        END OF ls_seg_total,
+        lt_seg_total LIKE TABLE OF ls_seg_total.
+
+  lt_seg_total = VALUE #(
+    FOR GROUPS <grp1> OF <ls_row> IN gt_result
+    GROUP BY ( cycle        = <ls_row>-cycle
+               s_kostl      = <ls_row>-s_kostl
+               s_hkont_low  = <ls_row>-s_hkont_low
+               s_hkont_high = <ls_row>-s_hkont_high
+               send_amt     = <ls_row>-send_amt )
+    ( cycle        = <grp1>-cycle
+      s_kostl      = <grp1>-s_kostl
+      s_hkont_low  = <grp1>-s_hkont_low
+      s_hkont_high = <grp1>-s_hkont_high
+      total_wsl    = REDUCE zte4fi0003-wsl(
+                       INIT lv_sum = VALUE zte4fi0003-wsl( )
+                       FOR ls_s IN lt_segments WHERE ( cycle = <grp1>-cycle AND s_kostl = <grp1>-s_kostl
+                           AND s_hkont_low <= <grp1>-s_hkont_low AND s_hkont_high >= <grp1>-s_hkont_high )
+                       FOR ls_c IN gt_fi_base_costs WHERE ( s_kostl = ls_s-s_kostl
+                                                       AND racct  >= ls_s-s_hkont_low
+                                                       AND racct  <= ls_s-s_hkont_high )
+                       NEXT lv_sum = lv_sum + ls_c-total_wsl ) ) ).
+
+  " 동일 기간에 이미 실행된 같은 배부사이클 금액까지 기배부액으로 본다.
+  " 그래야 같은 사이클을 재실행했을 때 recv_amt = 0 이 되어 중복 전표가 생성되지 않는다.
+  SELECT seg~cycle,
+         seg~segm_no,
+         f3~s_kostl,
+         f3~r_kostl,
+         f3~racct,
+         SUM( f3~wsl ) AS prev_wsl
+
+    FROM zte4fi0003 AS f3
+
+   INNER JOIN zte4fi0002 AS f2
+      ON f3~rbukrs = f2~bukrs
+     AND f3~gjahr  = f2~gjahr
+     AND f3~belnr  = f2~belnr
+
+   INNER JOIN @lt_segments AS seg
+      ON f3~s_kostl = seg~s_kostl
+     AND f3~r_kostl = seg~r_kostl
+     AND f3~racct   = seg~kstar
+
+   WHERE f2~bukrs = '0001'
+     AND f2~gjahr = @gs_param-gjahr
+     AND f2~monat BETWEEN @gs_param-s_mon AND @gs_param-e_mon
+     AND f2~blart = 'CA'
+     AND f3~drcrk = 'S'
+
+   GROUP BY seg~cycle,
+            seg~segm_no,
+            f3~s_kostl,
+            f3~r_kostl,
+            f3~racct
+
+    INTO TABLE @DATA(lt_prev_alloc).
+
+  DATA: BEGIN OF ls_skf_driver,
+          al_skf_id TYPE zee4_co_stagr,
+          r_kostl   TYPE zee4_co_kostl,
+        END OF ls_skf_driver,
+        lt_skf_driver LIKE TABLE OF ls_skf_driver WITH EMPTY KEY.
+
+  lt_skf_driver = VALUE #( FOR <ls_res> IN gt_result
+                             ( al_skf_id = <ls_res>-al_skf_id
+                               r_kostl   = <ls_res>-r_kostl ) ).
+
+  SORT lt_skf_driver BY al_skf_id r_kostl.
+  DELETE ADJACENT DUPLICATES FROM lt_skf_driver COMPARING al_skf_id r_kostl.
+
+  SELECT f11~stagr, f11~kostl, SUM( f11~stsvl ) AS stsvl, c10~msehi AS meins
+
+    FROM zte4co0011 AS f11
+
+   INNER JOIN @lt_skf_driver AS drv
+      ON f11~stagr = drv~al_skf_id
+     AND f11~kostl = drv~r_kostl
+
+   INNER JOIN zte4co0010 AS c10
+      ON f11~stagr = c10~stagr
+
+   WHERE f11~gjahr = @gs_param-gjahr
+     AND f11~poper BETWEEN @gs_param-s_mon AND @gs_param-e_mon
+
+GROUP BY f11~stagr, f11~kostl, c10~msehi
+ORDER BY f11~stagr, f11~kostl, c10~msehi
+
+     INTO TABLE @DATA(lt_skf_data).
+
+  DATA : lt_receiver_skf_sum LIKE TABLE OF gs_result.
+
+  lt_receiver_skf_sum = VALUE #(
+    FOR GROUPS <grp2> OF <ls_res> IN gt_result
+    GROUP BY ( cycle        = <ls_res>-cycle
+               s_kostl      = <ls_res>-s_kostl
+               s_hkont_low  = <ls_res>-s_hkont_low
+               s_hkont_high = <ls_res>-s_hkont_high
+               al_skf_id    = <ls_res>-al_skf_id )
+
+    ( cycle        = <grp2>-cycle
+      s_kostl      = <grp2>-s_kostl
+      s_hkont_low  = <grp2>-s_hkont_low
+      s_hkont_high = <grp2>-s_hkont_high
+      al_skf_id    = <grp2>-al_skf_id
+
+      total_skf = REDUCE #( INIT val2 = VALUE zee4_co_stsvl( )
+                            FOR m2 IN GROUP <grp2>
+                            NEXT val2 = val2 + VALUE #( lt_skf_data[ stagr = m2-al_skf_id
+                                                                     kostl = m2-r_kostl ]-stsvl DEFAULT 0 ) ) ) ) .
+
+  SORT lt_skf_data BY stagr kostl.
+
+  LOOP AT gt_result ASSIGNING FIELD-SYMBOL(<fs_res>).
+    CLEAR: lv_total_skf, lv_recv_skf, lv_prev_alloc.
+
+    READ TABLE lt_receiver_skf_sum INTO DATA(ls_tot) WITH KEY cycle        = <fs_res>-cycle
+                                                              s_kostl      = <fs_res>-s_kostl
+                                                              s_hkont_low  = <fs_res>-s_hkont_low
+                                                              s_hkont_high = <fs_res>-s_hkont_high.
+
+    IF sy-subrc = 0.
+      lv_total_skf = ls_tot-total_skf.
+    ENDIF.
+
+    READ TABLE lt_skf_data INTO DATA(ls_ind) WITH KEY stagr = <fs_res>-al_skf_id
+                                                      kostl = <fs_res>-r_kostl
+                                                      BINARY SEARCH.
+
+    IF sy-subrc = 0.
+      lv_recv_skf = ls_ind-stsvl.
+      lv_meins    = ls_ind-meins.
+    ENDIF.
+
+    IF ( lv_total_skf <= 0 OR lv_recv_skf <= 0 )
+   AND gv_exit_program = abap_true.
+
+      gv_error = 'X'.
+      MESSAGE i001 WITH 'SKF 기준값 또는 수신처 실적이 누락되어 계산을 중단합니다.'.
+      RETURN.
+
+    ENDIF.
+
+    READ TABLE lt_prev_alloc INTO DATA(ls_prev) WITH KEY cycle   = <fs_res>-cycle
+                                                         segm_no = <fs_res>-segm_no
+                                                         s_kostl = <fs_res>-s_kostl
+                                                         r_kostl = <fs_res>-r_kostl
+                                                         racct   = <fs_res>-kstar.
+
+    IF sy-subrc = 0.
+      READ TABLE lt_seg_total INTO DATA(ls_total) WITH KEY cycle        = <fs_res>-cycle
+                                                           s_kostl      = <fs_res>-s_kostl
+                                                           s_hkont_low  = <fs_res>-s_hkont_low
+                                                           s_hkont_high = <fs_res>-s_hkont_high.
+
+      IF ls_total-total_wsl <> 0.
+        lv_prev_alloc = ls_prev-prev_wsl * ( <fs_res>-send_amt / ls_total-total_wsl ).
+      ENDIF.
+
+    ENDIF.
+
+    <fs_res>-target_amt = ( <fs_res>-send_amt * lv_recv_skf ) / lv_total_skf.
+    <fs_res>-prev_amt   = lv_prev_alloc.
+    <fs_res>-recv_amt   = <fs_res>-target_amt - lv_prev_alloc.
+    <fs_res>-skf_perc   = ( lv_recv_skf / lv_total_skf ) * 100.
+    <fs_res>-skf_val    = lv_recv_skf.
+    <fs_res>-total_skf  = lv_total_skf.
+    <fs_res>-meins      = lv_meins.
+
+  ENDLOOP.
+
+  DELETE gt_result WHERE recv_amt <= 0.
+
+  DATA: lv_diff TYPE zte4fi0003-wsl.
+
+  SELECT r~s_kostl, r~s_hkont_low, r~s_hkont_high, r~send_amt,
+         MAX( r~r_kostl_txt ) AS last_r_txt,
+         SUM( r~recv_amt )    AS sum_recv
+    FROM @gt_result AS r
+   GROUP BY r~s_kostl, r~s_hkont_low, r~s_hkont_high, r~send_amt
+    INTO TABLE @DATA(lt_group_diffs).
+
+  LOOP AT lt_group_diffs INTO DATA(ls_diff).
+
+    lv_diff = ls_diff-send_amt - ls_diff-sum_recv.
+
+    IF lv_diff = 0.
+      CONTINUE.
+    ENDIF.
+
+    READ TABLE gt_result ASSIGNING FIELD-SYMBOL(<fs_last>)
+      WITH KEY s_kostl      = ls_diff-s_kostl
+               s_hkont_low  = ls_diff-s_hkont_low
+               s_hkont_high = ls_diff-s_hkont_high
+               r_kostl_txt  = ls_diff-last_r_txt.
+
+    IF sy-subrc = 0.
+      <fs_last>-recv_amt   = <fs_last>-recv_amt + lv_diff.
+      <fs_last>-target_amt = <fs_last>-target_amt + lv_diff.
+    ENDIF.
+
+  ENDLOOP.
+
+  PERFORM check_allocation_error CHANGING gt_result gt_result_error gv_error.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_execution_mode
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM handle_execution_mode .
+
+  DATA: lv_allow_extract TYPE abap_bool VALUE abap_true.
+
+  IF gt_result IS INITIAL.
+    MESSAGE s052 WITH '배부 처리 대상' DISPLAY LIKE 'E'.
+    EXIT.
+  ENDIF.
+
+  IF gv_error IS NOT INITIAL.
+
+    CASE 'X'.
+      WHEN gv_simulation_mode.
+        PERFORM display_error_popup.
+        lv_allow_extract = abap_true.
+        CLEAR gv_error.
+      WHEN OTHERS.
+        CLEAR gv_error.
+        EXIT.
+    ENDCASE.
+  ELSE.
+
+    IF gv_test = 'X'.
+      MESSAGE s001 WITH '테스트 실행입니다. 전표가 생성되지 않습니다.' DISPLAY LIKE 'S'.
+    ELSE.
+      PERFORM post_allocation_results.
+    ENDIF.
+
+  ENDIF.
+
+  IF gv_save_extract = abap_true AND gv_extract_id IS NOT INITIAL.
+    PERFORM save_allocation_extract.
+  ENDIF.
+
+  PERFORM display_alv_result.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_selected_cycle
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_selected_cycle .
+
+  DATA: lt_rows TYPE lvc_t_row,
+        ls_row  TYPE lvc_s_row.
+
+  REFRESH gt_selected_cycle.
+
+  go_alv_cycle->get_selected_rows(
+    IMPORTING
+      et_index_rows = lt_rows
+  ).
+
+  IF lt_rows IS INITIAL.
+    MESSAGE s001 WITH '실행할 사이클을 최소 하나 이상 선택해주세요.' DISPLAY LIKE 'E'.
+    LEAVE TO SCREEN sy-dynnr.
+  ENDIF.
+
+  LOOP AT lt_rows INTO ls_row.
+    APPEND gt_cycle[ ls_row-index ] TO gt_selected_cycle.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form create_actual_documents
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM post_allocation_results .
+
+  DATA : lv_code(1),
+         lv_msg(100).
+
+  ZCL_e4_fi_document=>post_document_co(
+    EXPORTING
+      it_result  = CONV #( gt_result )
+      iv_poper   = gs_param-e_mon
+    IMPORTING
+      et_belnr   = gt_belnr
+      ev_message = lv_msg
+      ev_code    = lv_code
+  ).
+
+  SORT gt_belnr BY belnr.
+  DELETE ADJACENT DUPLICATES FROM gt_belnr COMPARING belnr.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_alv_result
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_alv_result.
+
+  IF gt_result IS INITIAL.
+    EXIT.
+  ENDIF.
+
+  IF gv_detail IS NOT INITIAL.
+    IF gv_detail_sen_rec IS INITIAL
+   AND gv_detail_journal IS INITIAL.
+
+      CALL SCREEN '0600' STARTING AT 20 3.
+
+    ELSE.
+
+      IF gv_detail_sen_rec IS NOT INITIAL.
+        gt_send_recv = CORRESPONDING #( gt_result ).
+      ENDIF.
+
+      IF gv_detail_journal IS NOT INITIAL.
+        IF gv_test IS NOT INITIAL.
+          PERFORM display_journal_temp.
+        ELSE.
+          PERFORM display_journal.
+        ENDIF.
+      ENDIF.
+
+      CALL SCREEN '0500'.
+
+    ENDIF.
+  ELSE.
+    CALL SCREEN '0600' STARTING AT 20 3.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_journal
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_journal.
+
+  DATA: ls_journal       LIKE gs_journal,
+        lv_temp_belnr    TYPE i VALUE 0,
+        lv_docln         TYPE i VALUE 0,
+        lv_prev_send_key TYPE string,
+        lv_belnr         TYPE zee4_fi_belnr_d.
+
+  REFRESH gt_journal.
+
+  SELECT f02~belnr, f03~docln, f03~racct   AS kstar, f03~rwcur   AS waers,
+         f03~s_kostl, f03~r_kostl, f03~r_prctr,
+
+         CASE WHEN f03~drcrk = 'S' THEN '차변(수신)' ELSE '대변(송신)' END AS shkzg,
+         CASE WHEN f03~drcrk = 'S' THEN f03~wsl ELSE 0 END AS debit_amt,
+         CASE WHEN f03~drcrk = 'S' THEN 0 ELSE f03~wsl END AS credit_amt,
+         CASE WHEN f03~drcrk = 'S' THEN f1_3~txt20 ELSE f1_1~txt20 END AS kstar_txt,
+
+          c3_1~ktext AS s_kostl_txt,
+          c3_2~ktext AS r_kostl_txt,
+          c2~ktext   AS r_prctr_txt
+
+     FROM zte4fi0002 AS f02
+
+     INNER JOIN zte4fi0003 AS f03
+        ON f02~bukrs = f03~rbukrs
+       AND f02~gjahr = f03~gjahr
+       AND f02~belnr = f03~belnr
+
+     INNER JOIN @gt_belnr AS b
+        ON f02~belnr = b~belnr
+
+     LEFT OUTER JOIN zte4co0002 AS c2
+        ON f03~r_prctr = c2~prctr
+
+     LEFT OUTER JOIN zte4co0003 AS c3_1
+        ON f03~s_kostl = c3_1~kostl
+
+     LEFT OUTER JOIN zte4co0003 AS c3_2
+        ON f03~r_kostl = c3_2~kostl
+
+     LEFT OUTER JOIN zte4fi0001 AS f1_1
+        ON f03~racct = f1_1~saknr
+
+     LEFT OUTER JOIN zte4fi0001 AS f1_3
+        ON f03~racct = f1_3~saknr
+
+     INTO CORRESPONDING FIELDS OF TABLE @gt_journal.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_fcat
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_fcat .
+  CASE 'X'.
+    WHEN pa_dist.
+
+      PERFORM make_fcat_send_recv USING :
+        'X'   'S_KOSTL_TXT'     '송신 CC'   ''  '',
+        'X'   'KSTAR_TXT'   '배부 원가요소'  ''  '',
+        ''   'SEND_AMT'    '송신 금액'     'ZSE4FI0006'  '',
+        ''   'SKF_TXT'     '배부 기준'    ''  '',
+        ''   'SKF_VAL'     '수신처 수량'   'ZSE4FI0006'  '',
+        ''   'TOTAL_SKF'   '총량'         'ZSE4FI0006'  '',
+        ''   'MEINS'       '단위'         ''            '',
+        ''   'SKF_PERC'    '배부 비율(%)'  'ZSE4FI0006'  '',
+        ''   'R_KOSTL_TXT' '수신 CC'      ''             '',
+        ''   'R_PRCTR_TXT' '수신 PC'      ''             '',
+        ''   'RECV_AMT'    '수신 금액'     'ZSE4FI0006'  ''.
+
+
+      PERFORM make_fcat_journal USING :
+        'X'  'BELNR'       '배부 전표번호'        ''  '',
+        'X'  'DOCLN'       '전표 세부 번호'     ''  '',
+        ''   'SHKZG'       '차/대구분'            ''  '',
+        ''   'KSTAR_TXT'   '원가요소 설명'        ''   '',
+        ''   'DEBIT_AMT'   '차변 금액'            ''  '',
+        ''   'CREDIT_AMT'  '대변 금액'            ''  '',
+        ''   'WAERS'       '통화'                 ''  '',
+        ''   'S_KOSTL_TXT' '송신 코스트센터' ''            '',
+        ''   'R_KOSTL_TXT' '수신 코스트센터' ''            '',
+        ''   'R_PRCTR_TXT' '수신 프로핏센터' ''            ''.
+
+    WHEN pa_asmt.
+
+      PERFORM make_fcat_send_recv USING :
+        'X'   'S_KOSTL_TXT'     '송신 CC'   ''  '',
+        'X'   'S_HKONT_LOW_TXT' '송신계정'   ''  '',
+*        'X'   'S_HKONT_HIGH' '송신계정끝'     'ZSE4FI0006'  'S_HKONT',
+        ''   'SEND_AMT'    '송신 금액'     'ZSE4FI0006'  '',
+        ''   'SKF_TXT'     '배부 기준'    ''  '',
+        ''   'SKF_VAL'     '수신처 수량'   'ZSE4FI0006'  '',
+        ''   'TOTAL_SKF'   '총량'         'ZSE4FI0006'  '',
+        ''   'MEINS'       '단위'         ''            '',
+        ''   'SKF_PERC'    '배부 비율(%)'  'ZSE4FI0006'  '',
+        ''   'R_KOSTL_TXT' '수신 CC'      ''             '',
+        ''   'R_PRCTR_TXT' '수신 PC'      ''             '',
+        ''   'KSTAR_TXT'   '수신 원가요소'  ''  '',
+        ''   'RECV_AMT'    '수신 금액'     'ZSE4FI0006'  ''.
+
+      PERFORM make_fcat_journal USING :
+        'X'  'BELNR'       '배부 전표번호'        ''  '',
+        'X'  'DOCLN'       '전표 세부 번호'     ''  '',
+        ''   'SHKZG'       '차/대구분'            ''  '',
+        ''   'KSTAR_TXT'   '원가요소 설명'        ''   '',
+        ''   'DEBIT_AMT'   '차변 금액'            ''  '',
+        ''   'CREDIT_AMT'  '대변 금액'            ''  '',
+        ''   'WAERS'       '통화'                 ''  '',
+        ''   'S_KOSTL_TXT' '송신 코스트센터' ''            '',
+        ''   'R_KOSTL_TXT' '수신 코스트센터' ''            '',
+        ''   'R_PRCTR_TXT' '수신 프로핏센터' ''            ''.
+  ENDCASE.
+
+  PERFORM make_fcat_tree USING :
+      ''   'NODE_KEY'  '노드 ID'   ''   '',
+      ''   'TEXT'      '객체 유형'  ''   ''.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_layout
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_layout .
+
+  gs_layout-zebra      = 'X'.
+  gs_layout-cwidth_opt = 'A'.
+  gs_layout-sel_mode   = 'D'.
+  gs_layout-no_rowmark = 'X'.
+  gs_layout-totals_bef = 'X'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_screen_0500
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_screen_0500 .
+
+*-- Container
+  go_cont_send_recv  = NEW cl_gui_custom_container(
+    container_name = 'GO_CONT_SEND_RECV' ).
+
+  go_cont_journal = NEW cl_gui_custom_container(
+    container_name = 'GO_CONT_JOURNAL' ).
+
+  go_cont_list = NEW cl_gui_custom_container(
+    container_name = 'GO_CONT_LIST' ).
+
+*-- ALV
+  go_alv_send_recv  = NEW cl_gui_alv_grid(
+    i_parent = go_cont_send_recv ).
+
+  go_alv_journal = NEW cl_gui_alv_grid(
+    i_parent = go_cont_journal ).
+
+*-- Display ALV
+  gs_variant = VALUE #( report = sy-repid
+                        handle = 'SEN' ).
+
+  go_alv_send_recv->set_table_for_first_display(
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_send_recv
+      it_fieldcatalog = gt_fcat_send_recv
+      it_sort         = gt_sort_send_recv
+  ).
+
+  go_alv_send_recv->set_sort_criteria( it_sort = gt_sort_send_recv ).
+
+  go_alv_send_recv->refresh_table_display(
+      is_stable      = gs_stable
+    ).
+
+  gs_variant = VALUE #( BASE gs_variant
+                        handle = 'LIN' ).
+
+  go_alv_journal->set_table_for_first_display(
+    EXPORTING
+      is_variant      = gs_variant
+      i_save          = 'A'
+      i_default       = 'X'
+      is_layout       = gs_layout
+    CHANGING
+      it_outtab       = gt_journal
+      it_fieldcatalog = gt_fcat_journal
+      it_sort         = gt_sort_journal
+  ).
+
+  go_alv_journal->set_sort_criteria( it_sort = gt_sort_journal ).
+
+  go_alv_journal->refresh_table_display(
+      is_stable      = gs_stable
+    ).
+
+  PERFORM display_document_1.
+  PERFORM display_alv_tree.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_fcat_send_recv
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM make_fcat_send_recv  USING  pv_key
+                                 pv_field
+                                 pv_text
+                                 pv_ref_table
+                                 pv_ref_field.
+
+  gt_fcat_send_recv = VALUE #( BASE gt_fcat_send_recv
+                                ( key        = pv_key
+                                  fieldname  = pv_field
+                                  coltext    = pv_text
+                                  ref_table  = pv_ref_table
+                                  ref_field  = pv_ref_field
+                                  cfieldname = SWITCH #( pv_field WHEN 'SEND_AMT' OR 'RECV_AMT' THEN 'WAERS' ELSE '' )
+                                  qfieldname = SWITCH #( pv_field WHEN 'SKF_VAL'  OR 'TOTAL_SKF' THEN 'MEINS' ELSE '' )
+                                  do_sum       = SWITCH #( pv_field WHEN 'RECV_AMT' THEN 'X' ELSE '' )
+                                  emphasize  = SWITCH #( pv_field WHEN 'RECV_AMT' THEN 'C300'
+                                                                  WHEN 'SKF_PERC' THEN 'C700'
+                                                                  ELSE '' )
+                                  no_zero    = SWITCH #( pv_field WHEN 'SEND_AMT' THEN 'X' ELSE '' )
+                                )
+                              ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_fcat_journal
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&      --> P_
+*&---------------------------------------------------------------------*
+FORM make_fcat_journal  USING  pv_key
+                               pv_field
+                               pv_text
+                               pv_ref_table
+                               pv_ref_field.
+
+  gt_fcat_journal = VALUE #( BASE gt_fcat_journal
+                                ( key        = pv_key
+                                  fieldname  = pv_field
+                                  coltext    = pv_text
+                                  ref_table  = pv_ref_table
+                                  ref_field  = pv_ref_field
+                                  cfieldname = SWITCH #( pv_field WHEN 'DEBIT_AMT' OR 'CREDIT_AMT' THEN 'WAERS'
+                                                                  ELSE '' )
+                                  do_sum     = SWITCH #( pv_field WHEN 'DEBIT_AMT' OR 'CREDIT_AMT' THEN 'X'
+                                                                  ELSE '' )
+                                  emphasize  = SWITCH #( pv_field WHEN 'DEBIT_AMT' OR 'CREDIT_AMT' THEN 'C300'
+                                                                  ELSE '' )
+                                )
+                              ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_document_1
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_document_1 .
+
+  CREATE OBJECT go_document_result_1
+    EXPORTING
+      style            = 'ALV_TO_HTML'
+      background_color = 1
+      no_margins       = space.
+
+  PERFORM set_document_result_1 USING go_document_result_1.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_alv_tree
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_alv_tree .
+
+  DATA : l_hierarchy_header TYPE treev_hhdr,
+         lt_events          TYPE cntl_simple_events,
+         ls_event           TYPE cntl_simple_event.
+
+  IF go_cont_tree IS INITIAL.
+
+    l_hierarchy_header-heading   = '코스트센터'.
+    l_hierarchy_header-width     = '40'.
+    l_hierarchy_header-width_pix = 'X'.
+
+    CREATE OBJECT go_cont_tree
+      EXPORTING
+        container_name = 'GO_CONT_TREE'.
+
+    CREATE OBJECT go_alv_tree
+      EXPORTING
+        parent              = go_cont_tree
+        node_selection_mode = cl_gui_column_tree=>node_sel_mode_multiple
+        item_selection      = 'X'
+        no_html_header      = 'X'
+        no_toolbar          = space.
+
+    ls_event-eventid = cl_gui_column_tree=>eventid_item_double_click.
+    ls_event-appl_event = 'X'.
+    APPEND ls_event TO lt_events.
+
+    ls_event-eventid = cl_gui_column_tree=>eventid_node_double_click.
+    ls_event-appl_event = 'X'.
+    APPEND ls_event TO lt_events.
+
+    ls_event-eventid = cl_gui_column_tree=>eventid_expand_no_children.
+    ls_event-appl_event = 'X'.
+    APPEND ls_event TO lt_events.
+
+    CALL METHOD go_alv_tree->set_registered_events
+      EXPORTING
+        events = lt_events.
+
+    SET HANDLER : gcl_event_handler=>handle_item_double_click FOR go_alv_tree.
+
+    gs_variant = VALUE #( report = sy-repid
+                          handle = 'TRE' ).
+
+    go_alv_tree->set_table_for_first_display(
+      EXPORTING
+        i_save              = 'A'
+        is_variant          = gs_variant
+        is_hierarchy_header = l_hierarchy_header
+      CHANGING
+        it_outtab           = gt_tree_node
+        it_fieldcatalog     = gt_fcat_tree ).
+
+  ELSE.
+    go_alv_tree->delete_all_nodes( ).
+  ENDIF.
+
+  PERFORM make_hierarchy.
+  go_alv_tree->frontend_update( ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_document_result_1
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GO_DOCUMENT_RESULT
+*&---------------------------------------------------------------------*
+FORM set_document_result_1 USING po_document TYPE REF TO cl_dd_document.
+
+  DATA: lo_table      TYPE REF TO cl_dd_table_element,
+        lo_col1       TYPE REF TO cl_dd_area,
+        lo_col2       TYPE REF TO cl_dd_area,
+        lv_amt_char   TYPE c LENGTH 30,
+        lv_amt_string TYPE string,
+        lv_cycle_text TYPE string.
+
+  SELECT SUM( recv_amt ) AS total_amt,
+         COUNT( * )      AS receiver_cnt,
+         SUM( CASE WHEN r_kostl <> @space THEN 1 ELSE 0 END ) AS cc_cnt,
+         SUM( CASE WHEN r_kostl = @space AND r_prctr <> @space THEN 1 ELSE 0 END ) AS pc_cnt
+    FROM @gt_result AS mock
+    INTO @DATA(ls_agg).
+
+  SELECT COUNT( DISTINCT s_kostl )
+    FROM @gt_result AS mock
+    INTO @DATA(lv_sender_cnt).
+
+  READ TABLE gt_result ASSIGNING FIELD-SYMBOL(<fs_first>) INDEX 1.
+
+  IF sy-subrc = 0.
+    WRITE ls_agg-total_amt TO lv_amt_char CURRENCY <fs_first>-waers.
+    lv_amt_string = lv_amt_char.
+    CONDENSE lv_amt_string.
+    lv_amt_string = |{ lv_amt_string } { <fs_first>-waers }|.
+  ENDIF.
+
+  po_document->add_icon( sap_icon = 'ICON_WD_BUSINESS_GRAPHICS' ).
+  po_document->add_text(
+    text         = ' 배부 처리 결과 요약'
+    sap_emphasis = cl_dd_area=>strong
+  ).
+  po_document->new_line( ).
+  po_document->add_text( text = '───────────────────────────────────────────' ).
+  po_document->new_line( ).
+
+  po_document->add_table(
+    EXPORTING
+      no_of_columns = 2
+      border        = '0'
+    IMPORTING
+      table         = lo_table
+  ).
+
+  lo_table->add_column( EXPORTING width = '30'  IMPORTING column = lo_col1 ).
+  lo_table->add_column( EXPORTING width = '1500' IMPORTING column = lo_col2 ).
+
+  IF <fs_first> IS ASSIGNED.
+    po_document->add_icon( sap_icon = 'ICON_COMPANY_CODE' ).
+    lo_col2->add_text( text = | 관리회계 영역 : 0001 (EVERNITURE)| ).
+    lo_table->new_row( ).
+
+    SELECT DISTINCT cycle
+      FROM @gt_result AS mock
+      INTO TABLE @DATA(lt_run_cycle).
+
+    DATA(lv_cycle_qty) = lines( lt_run_cycle ).
+    ASSIGN gt_cycle[ cycle = <fs_first>-cycle ] TO FIELD-SYMBOL(<fs_cy_txt>).
+
+    IF <fs_cy_txt> IS ASSIGNED.
+      DATA(lv_cycle_txt_sh) = <fs_cy_txt>-ktext.
+    ENDIF.
+
+    IF lv_cycle_qty > 1.
+      DATA(lv_extra_cnt) = lv_cycle_qty - 1.
+      lv_cycle_text = | 실행 사이클   : { <fs_first>-cycle } ({ lv_cycle_txt_sh }) 외 { lv_extra_cnt }건|.
+    ELSE.
+      lv_cycle_text = | 실행 사이클   : { <fs_first>-cycle } ({ lv_cycle_txt_sh })|.
+    ENDIF.
+
+    lo_col1->add_icon( sap_icon = 'ICON_RELATION' ).
+    lo_col2->add_text( text = CONV #( lv_cycle_text ) ).
+    lo_table->new_row( ).
+  ENDIF.
+
+  IF gt_result_error IS INITIAL.
+    lo_col1->add_icon( sap_icon = 'ICON_OKAY' ).
+    lo_col2->add_text(
+      text         = 'Status: 정상 완료 (Error 0)'
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_positive
+    ).
+    lo_table->new_row( ).
+  ELSE.
+    DATA(lv_error_lines) = lines( gt_result_error ).
+    lo_col1->add_icon( sap_icon = 'ICON_CANCEL' ).
+    lo_col2->add_text(
+      text         = |Status: 오류 발생 (Error { lv_error_lines })|
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_negative
+    ).
+    lo_table->new_row( ).
+  ENDIF.
+
+  lo_col1->add_text( text = '' ). lo_col2->add_text( text = '' ). lo_table->new_row( ).
+
+  lo_col1->add_icon( sap_icon = 'ICON_REFERENCE_LIST' ).
+  lo_col2->add_text( text = '[배부 처리 통계]' sap_emphasis = cl_dd_area=>strong ).
+  IF sy-dynnr = '0500'.
+    lo_col2->add_gap( width = 10 ).
+  ELSE.
+    lo_table->new_row( ).
+  ENDIF.
+
+  lo_col1->add_text( text = '' ).
+  lo_col2->add_text( text = |• 총 송신(Sender) 코스트센터 수 : { lv_sender_cnt } 건| ).
+  IF sy-dynnr = '0500'.
+    lo_col2->add_gap( width = 10 ).
+  ELSE.
+    lo_table->new_row( ).
+  ENDIF.
+
+  lo_col1->add_text( text = '' ).
+  lo_col2->add_text( text = |• 총 수신(Receiver) 오브젝트 수 : { ls_agg-receiver_cnt } 건| ).
+  IF sy-dynnr = '0500'.
+    lo_col2->add_gap( width = 10 ).
+  ELSE.
+    lo_table->new_row( ).
+  ENDIF.
+
+  lo_col1->add_text( text = '' ).
+  lo_col2->add_text( text = |• 코스트센터(CC) 배부: { ls_agg-cc_cnt } 건| ).
+  IF sy-dynnr = '0500'.
+    lo_col2->add_gap( width = 10 ).
+  ELSE.
+    lo_table->new_row( ).
+  ENDIF.
+
+  lo_col1->add_text( text = '' ).
+  lo_col2->add_text(
+    text         = |- 손익센터(PC) 직행 배부: { ls_agg-pc_cnt } 건|
+    sap_emphasis = cl_dd_area=>strong
+    sap_color    = cl_dd_area=>list_key
+  ).
+  IF sy-dynnr = '0500'.
+    lo_col2->add_gap( width = 10 ).
+  ELSE.
+    lo_table->new_row( ).
+  ENDIF.
+
+  lo_col1->add_text( text = '' ). lo_col2->add_text( text = '' ). lo_table->new_row( ).
+
+  lo_col1->add_icon( sap_icon = 'ICON_COST_COMPONENTS' ).
+  lo_col2->add_text( text = '[배부 금액 합계]' sap_emphasis = cl_dd_area=>strong ).
+  IF sy-dynnr = '0500'.
+    lo_col2->add_gap( width = 10 ).
+  ELSE.
+    lo_table->new_row( ).
+  ENDIF.
+
+  lo_col1->add_text( text = '' ).
+  lo_col2->add_text(
+    text         = |• 총 배부 금액 : { lv_amt_string }|
+    sap_emphasis = cl_dd_area=>strong
+    sap_color    = cl_dd_area=>list_total
+  ).
+  lo_table->new_row( ).
+
+  lo_col1->add_text( text = '' ). lo_col2->add_text( text = '' ). lo_table->new_row( ).
+
+  po_document->merge_document( ).
+  po_document->display_document(
+    EXPORTING
+      reuse_control = 'X'
+      parent        = go_cont_list
+  ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_hierarchy
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- GT_TREE_NODE
+*&---------------------------------------------------------------------*
+FORM make_hierarchy.
+
+  DATA: lv_root_key  TYPE lvc_nkey,
+        lv_start_key TYPE lvc_nkey.
+
+  SELECT *
+    INTO CORRESPONDING FIELDS OF TABLE gt_hier
+    FROM zte4co0007
+   WHERE setnam = 'CCSH1000'.
+
+  LOOP AT gt_hier ASSIGNING FIELD-SYMBOL(<fs_h>) WHERE node_type = 'L'.
+    READ TABLE gt_result TRANSPORTING NO FIELDS WITH KEY s_kostl = <fs_h>-child_id.
+    IF sy-subrc <> 0.
+      <fs_h>-parent_id = 'DELETE'.
+    ENDIF.
+  ENDLOOP.
+
+  DELETE gt_hier WHERE parent_id = 'DELETE'.
+  SORT gt_hier BY hlevel DESCENDING.
+
+  LOOP AT gt_hier ASSIGNING FIELD-SYMBOL(<fs_g>) WHERE node_type = 'G'.
+    READ TABLE gt_hier TRANSPORTING NO FIELDS WITH KEY parent_id = <fs_g>-child_id.
+    IF sy-subrc <> 0.
+      <fs_g>-parent_id = 'DELETE'.
+    ENDIF.
+  ENDLOOP.
+
+  DELETE gt_hier WHERE parent_id = 'DELETE'.
+  SORT gt_hier BY hlevel ASCENDING.
+
+  CLEAR lv_root_key.
+
+  LOOP AT gt_hier INTO DATA(ls_root) WHERE parent_id IS INITIAL OR hlevel = 1.
+    PERFORM add_recursive_node USING ls_root
+                                     lv_root_key
+                                     gt_hier
+                            CHANGING lv_start_key.
+
+    IF lv_start_key IS NOT INITIAL.
+      CALL METHOD go_alv_tree->expand_node
+        EXPORTING
+          i_node_key    = lv_start_key
+          i_level_count = 99
+        EXCEPTIONS
+          OTHERS        = 0.
+    ENDIF.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form add_recursive_node
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+FORM add_recursive_node USING    ps_hier    LIKE gs_hier
+                                 pv_p_key   TYPE lvc_nkey
+                                 pt_hier    LIKE gt_hier
+                        CHANGING cv_new_key TYPE lvc_nkey.
+
+  DATA: ls_display LIKE gs_tree_node,
+        lv_sub_key TYPE lvc_nkey.
+
+  CLEAR ls_display.
+  ls_display-text     = ps_hier-node_text.
+  ls_display-node_key = ps_hier-child_id.
+
+  PERFORM add_node USING pv_p_key
+                         ps_hier-node_type
+                CHANGING ls_display.
+
+  cv_new_key = ls_display-nkey.
+
+  READ TABLE gt_hier ASSIGNING FIELD-SYMBOL(<fs_h>)
+       WITH KEY child_id = ps_hier-child_id.
+  IF sy-subrc = 0.
+    <fs_h>-nkey = ls_display-nkey.
+  ENDIF.
+
+  IF ps_hier-node_type = 'G'.
+    LOOP AT pt_hier INTO DATA(ls_child) WHERE parent_id = ps_hier-child_id.
+      PERFORM add_recursive_node USING ls_child
+                                       ls_display-nkey
+                                       pt_hier
+                              CHANGING lv_sub_key.
+    ENDLOOP.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form add_node
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+FORM add_node  USING    pv_key       TYPE lvc_nkey
+                        pv_node_type TYPE char1
+               CHANGING ps_display   LIKE gs_tree_node.
+
+  DATA: lt_item_layout TYPE lvc_t_layi,
+        ls_node_layout TYPE lvc_s_layn.
+
+  CASE pv_node_type.
+    WHEN 'G'.
+      ls_node_layout-n_image   = '@FN@'.
+      ls_node_layout-exp_image = '@FO@'.
+    WHEN 'L'.
+      ls_node_layout-n_image   = '@BL@'.
+      ls_node_layout-exp_image = '@BL@'.
+  ENDCASE.
+
+  CALL METHOD go_alv_tree->add_node
+    EXPORTING
+      i_relat_node_key = pv_key
+      i_relationship   = cl_gui_column_tree=>relat_last_child
+      is_outtab_line   = ps_display
+      is_node_layout   = ls_node_layout
+      it_item_layout   = lt_item_layout
+      i_node_text      = CONV #( ps_display-text )
+    IMPORTING
+      e_new_node_key   = ps_display-nkey.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_item_double_click
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+FORM handle_item_double_click  USING pv_node_key  TYPE lvc_nkey
+                                     pv_fieldname TYPE lvc_fname.
+
+  IF pv_fieldname NE '&Hierarchy'.
+    EXIT.
+  ENDIF.
+
+  READ TABLE gt_hier INTO DATA(ls_clicked) WITH KEY nkey = pv_node_key.
+
+  IF sy-subrc <> 0.
+    EXIT.
+  ENDIF.
+
+  CLEAR gt_kostl_filter.
+  gs_kostl_filter = VALUE #( fieldname = 'S_KOSTL' sign = 'I' option = 'EQ' ).
+
+  IF ls_clicked-node_type = 'L'.
+    gs_kostl_filter-low = ls_clicked-child_id.
+    APPEND gs_kostl_filter TO gt_kostl_filter.
+  ELSEIF ls_clicked-node_type = 'G'.
+    PERFORM collect_childs USING    ls_clicked-child_id
+                           CHANGING gt_kostl_filter.
+  ENDIF.
+
+  IF gt_kostl_filter IS NOT INITIAL.
+    PERFORM filter_alv_data USING gt_kostl_filter.
+  ELSE.
+    MESSAGE s001 WITH '선택한 노드에 해당하는 배부 데이터가 없습니다.' DISPLAY LIKE 'W'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_screen_0600
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+FORM display_screen_0600 .
+
+  go_cont_list = NEW cl_gui_custom_container(
+    container_name = 'GO_CONT_LIST' ).
+
+  PERFORM display_document_2.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form make_fcat_tree
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+FORM make_fcat_tree  USING  pv_key
+                            pv_field
+                            pv_text
+                            pv_ref_table
+                            pv_ref_field.
+
+  gt_fcat_tree = VALUE #( BASE gt_fcat_tree
+                            ( key        = pv_key
+                            fieldname  = pv_field
+                            coltext    = pv_text
+                            ref_table  = pv_ref_table
+                            ref_field  = pv_ref_field
+                            outputlen  = SWITCH #( pv_field WHEN 'NODE_KEY' THEN 15
+                                                            WHEN 'TEXT'     THEN 30 )
+                            )
+                          ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form check_allocation_error
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+FORM check_allocation_error  CHANGING  pt_result       LIKE gt_result
+                                       pt_result_error LIKE gt_result
+                                       pv_error        LIKE gv_error.
+
+  DATA: BEGIN OF ls_seg_check,
+          cycle        LIKE gs_result-cycle,
+          segm_no      LIKE gs_result-segm_no,
+          s_kostl      LIKE gs_result-s_kostl,
+          total_skf    LIKE gs_result-total_skf,
+          sum_recv_amt LIKE gs_result-recv_amt,
+        END OF ls_seg_check.
+
+  DATA: lt_seg_check LIKE HASHED TABLE OF ls_seg_check
+                     WITH UNIQUE KEY cycle segm_no s_kostl,
+        lv_row_error TYPE abap_bool,
+        lv_err_msg   TYPE string.
+
+  REFRESH pt_result_error.
+
+  LOOP AT pt_result INTO DATA(ls_init).
+    CLEAR ls_seg_check.
+    ls_seg_check-cycle        = ls_init-cycle.
+    ls_seg_check-segm_no      = ls_init-segm_no.
+    ls_seg_check-s_kostl      = ls_init-s_kostl.
+    ls_seg_check-total_skf    = ls_init-total_skf.
+    ls_seg_check-sum_recv_amt = ls_init-recv_amt.
+    COLLECT ls_seg_check INTO lt_seg_check.
+  ENDLOOP.
+
+  LOOP AT pt_result ASSIGNING FIELD-SYMBOL(<fs_res>).
+    CLEAR lv_row_error.
+
+    READ TABLE lt_seg_check INTO DATA(ls_chk)
+         WITH KEY cycle   = <fs_res>-cycle
+                  segm_no = <fs_res>-segm_no
+                  s_kostl = <fs_res>-s_kostl.
+
+    IF ls_chk-total_skf > 0 AND <fs_res>-skf_val = 0.
+      <fs_res>-cycle = 'DELETE_NORMAL'.
+      CONTINUE.
+    ENDIF.
+
+    IF <fs_res>-recv_amt = 0 AND <fs_res>-skf_val > 0.
+      <fs_res>-cycle = 'DELETE_NORMAL'.
+      CONTINUE.
+    ENDIF.
+
+    IF ls_chk-total_skf = 0 AND ls_chk-sum_recv_amt = 0.
+      <fs_res>-cycle = 'DELETE_NORMAL'.
+      CONTINUE.
+    ENDIF.
+
+    IF <fs_res>-recv_amt < 0.
+      lv_row_error = abap_true.
+      lv_err_msg   = |리시버 { <fs_res>-r_kostl }의 배부 금액이 음수({ <fs_res>-recv_amt })입니다.|.
+    ENDIF.
+
+    IF ls_chk-total_skf = 0 AND ls_chk-sum_recv_amt <> 0.
+      lv_row_error = abap_true.
+      lv_err_msg   = |센더 { <fs_res>-s_kostl }의 총 SKF가 0인데 배부액이 존재합니다.|.
+    ENDIF.
+
+    IF <fs_res>-skf_perc > 0 AND <fs_res>-skf_val = 0.
+      lv_row_error = abap_true.
+      lv_err_msg   = |리시버 { <fs_res>-r_kostl }의 배부 비율이 있으나 SKF 수량이 0입니다.|.
+    ENDIF.
+
+    IF lv_row_error = abap_true.
+      APPEND <fs_res> TO pt_result_error.
+    ENDIF.
+  ENDLOOP.
+
+  IF pt_result_error IS NOT INITIAL.
+    pv_error = abap_true.
+  ENDIF.
+
+  IF pv_error IS NOT INITIAL.
+    gv_error = 'X'.
+
+    LOOP AT pt_result_error INTO DATA(ls_err).
+      DELETE pt_result WHERE cycle   = ls_err-cycle
+                        AND segm_no = ls_err-segm_no
+                        AND s_kostl = ls_err-s_kostl
+                        AND r_kostl = ls_err-r_kostl.
+    ENDLOOP.
+
+    IF gv_exit_program IS NOT INITIAL.
+      IF lv_err_msg IS INITIAL.
+        lv_err_msg = '배부 도중 정합성 오류가 발생했습니다.'.
+      ENDIF.
+      MESSAGE s001 WITH lv_err_msg DISPLAY LIKE 'I'.
+      CLEAR gv_error.
+      EXIT.
+    ENDIF.
+  ENDIF.
+
+  DELETE pt_result WHERE cycle = 'DELETE_NORMAL'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_sort
+*&---------------------------------------------------------------------*
+FORM set_sort .
+  CASE 'X'.
+    WHEN pa_dist.
+      PERFORM set_sort_journal_d.
+      PERFORM set_sort_send_recv_d.
+    WHEN pa_asmt.
+      PERFORM set_sort_journal_a.
+      PERFORM set_sort_send_recv_a.
+  ENDCASE.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_sort_journal
+*&---------------------------------------------------------------------*
+FORM set_sort_journal_d .
+  REFRESH : gt_sort_journal.
+  APPEND VALUE #( fieldname = 'BELNR' spos = 1 up = 'X' subtot = 'X' expa = 'X' ) TO gt_sort_journal.
+  APPEND VALUE #( fieldname = 'SHKZG' spos = 2 up = 'X' ) TO gt_sort_journal.
+  APPEND VALUE #( fieldname = 'DOCLN'     spos = 3 up = 'X' ) TO gt_sort_journal.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_sort_send_recv
+*&---------------------------------------------------------------------*
+FORM set_sort_send_recv_d .
+  REFRESH : gt_sort_send_recv.
+
+  gs_sort-fieldname = 'S_KOSTL_TXT'.
+  gs_sort-spos      = 1.
+  gs_sort-up        = 'X'.
+  APPEND gs_sort TO gt_sort_send_recv.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'KSTAR_TXT'.
+  gs_sort-spos      = 2.
+  gs_sort-up        = 'X'.
+  gs_sort-subtot    = 'X'.
+  gs_sort-expa      = 'X'.
+  APPEND gs_sort TO gt_sort_send_recv.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'SKF_TXT'.
+  gs_sort-spos      = 4.
+  gs_sort-up        = 'X'.
+  APPEND gs_sort TO gt_sort_send_recv.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'TOTAL_SKF'.
+  gs_sort-spos      = 5.
+  gs_sort-up        = 'X'.
+  APPEND gs_sort TO gt_sort_send_recv.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'MEINS'.
+  gs_sort-spos      = 6.
+  gs_sort-up        = 'X'.
+  APPEND gs_sort TO gt_sort_send_recv.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'R_KOSTL_TXT'.
+  gs_sort-spos      = 7.
+  gs_sort-up        = 'X'.
+  APPEND gs_sort TO gt_sort_send_recv.
+  CLEAR  gs_sort.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_error_popup
+*&---------------------------------------------------------------------*
+FORM display_error_popup.
+
+  DATA : BEGIN OF ls_log,
+           icon             TYPE icon_d,
+           cycle            TYPE zee4_co_cycle,
+           segm_name        TYPE zee4_co_ktext,
+           s_kostl_txt      TYPE zee4_co_ktext,
+           s_hkont_low_txt  TYPE zee4_fi_txt20,
+           s_hkont_high_txt TYPE zee4_fi_txt20,
+           send_amt         TYPE zee4_fi_fins_vwcur12,
+           r_kostl_txt      TYPE zee4_co_ktext,
+           r_prctr_txt      TYPE zee4_co_ktext,
+           recv_amt         TYPE zee4_fi_fins_vwcur12,
+           waers            TYPE waers,
+           skf_perc         TYPE zee4_co_skf_perc,
+           kstar_txt        TYPE zee4_fi_txt20,
+           skf_txt          TYPE zee4_co_ktext,
+           skf_val          TYPE zee4_co_stsvl,
+           total_skf        TYPE zee4_co_stsvl,
+           meins            TYPE meins,
+         END OF ls_log,
+         lt_log  LIKE STANDARD TABLE OF ls_log WITH EMPTY KEY,
+         lo_salv TYPE REF TO cl_salv_table,
+         lo_col  TYPE REF TO cl_salv_column.
+
+  IF gt_result_error IS INITIAL.
+    EXIT.
+  ENDIF.
+
+  ROLLBACK WORK.
+
+  lt_log = VALUE #( FOR wa IN gt_result_error (
+    VALUE #( BASE CORRESPONDING #( wa )
+             icon             = '@5C@'
+             s_hkont_high_txt = COND #( WHEN wa-s_hkont_low_txt = wa-s_hkont_high_txt
+                                        THEN space
+                                        ELSE wa-s_hkont_high_txt ) )
+  ) ).
+
+  TRY.
+      cl_salv_table=>factory( IMPORTING r_salv_table = lo_salv
+                              CHANGING  t_table      = lt_log ).
+
+      lo_salv->set_screen_popup( start_column = 15 end_column = 180 start_line = 5 end_line = 25 ).
+      lo_salv->get_functions( )->set_all( abap_true ).
+
+      DATA(lo_columns) = lo_salv->get_columns( ).
+      lo_columns->set_optimize( abap_true ).
+
+      DEFINE _set_col_txt.
+        TRY.
+            lo_col = lo_columns->get_column( &1 ).
+            lo_col->set_short_text( CONV scrtext_s( &2 ) ).
+            lo_col->set_medium_text( CONV scrtext_m( &2 ) ).
+            lo_col->set_long_text( CONV scrtext_l( &2 ) ).
+          CATCH cx_salv_not_found.
+        ENDTRY.
+      END-OF-DEFINITION.
+
+      _set_col_txt 'ICON'             '상태'.
+      _set_col_txt 'CYCLE'            '사이클'.
+      _set_col_txt 'SEGM_NAME'        '세그먼트'.
+      _set_col_txt 'S_KOSTL_TXT'      '송신 코스트센터'.
+      _set_col_txt 'S_HKONT_LOW_TXT'  '송신 계정범위 시작'.
+      _set_col_txt 'S_HKONT_HIGH_TXT' '송신 계정범위 끝'.
+      _set_col_txt 'SEND_AMT'         '송신 총금액'.
+      _set_col_txt 'R_KOSTL_TXT'      '수신 코스트센터'.
+      _set_col_txt 'R_PRCTR_TXT'      '수신 프로핏센터'.
+      _set_col_txt 'RECV_AMT'         '수신 금액'.
+      _set_col_txt 'WAERS'            '통화'.
+      _set_col_txt 'SKF_PERC'         'SKF 비율'.
+      _set_col_txt 'KSTAR_TXT'        '수신 원가요소'.
+      _set_col_txt 'SKF_TXT'          '기준 SKF'.
+      _set_col_txt 'SKF_VAL'          'SKF 수량'.
+      _set_col_txt 'TOTAL_SKF'        '전체 SKF 수량'.
+      _set_col_txt 'MEINS'            '단위'.
+
+      DATA(lo_send_col) = CAST cl_salv_column_table( lo_columns->get_column( 'SEND_AMT' ) ).
+      lo_send_col->set_currency_column( 'WAERS' ).
+
+      DATA(lo_recv_col) = CAST cl_salv_column_table( lo_columns->get_column( 'RECV_AMT' ) ).
+      lo_recv_col->set_currency_column( 'WAERS' ).
+
+      DATA(lo_val_col) = CAST cl_salv_column_table( lo_columns->get_column( 'SKF_VAL' ) ).
+      lo_val_col->set_quantity_column( 'MEINS' ).
+
+      DATA(lo_tot_col) = CAST cl_salv_column_table( lo_columns->get_column( 'TOTAL_SKF' ) ).
+      lo_tot_col->set_quantity_column( 'MEINS' ).
+
+      lo_salv->display( ).
+
+    CATCH cx_salv_msg.
+      MESSAGE s055 WITH 'ALV 생성' DISPLAY LIKE 'E'.
+    CATCH cx_salv_not_found.
+      MESSAGE s001 WITH '지정된 ALV 컬럼을 찾을 수 없습니다.' DISPLAY LIKE 'E'.
+    CATCH cx_salv_data_error.
+      MESSAGE s055 WITH '데이터 연결(통화/단위)' DISPLAY LIKE 'E'.
+  ENDTRY.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form collect_childs
+*&---------------------------------------------------------------------*
+FORM collect_childs USING    pv_parent_id    TYPE zte4co0007-child_id
+                    CHANGING ct_kostl_filter TYPE lvc_t_filt.
+
+  gs_kostl_filter = VALUE #( fieldname = 'S_KOSTL' sign = 'I' option = 'EQ' ).
+
+  LOOP AT gt_hier INTO DATA(ls_row) WHERE parent_id = pv_parent_id.
+    IF ls_row-node_type = 'L'.
+      gs_kostl_filter-low = ls_row-child_id.
+      APPEND gs_kostl_filter TO ct_kostl_filter.
+    ELSEIF ls_row-node_type = 'G'.
+      PERFORM collect_childs USING    ls_row-child_id
+                             CHANGING ct_kostl_filter.
+    ENDIF.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form filter_alv_data
+*&---------------------------------------------------------------------*
+FORM filter_alv_data  USING  pt_target_kostl TYPE lvc_t_filt.
+
+  CALL METHOD go_alv_send_recv->set_filter_criteria
+    EXPORTING
+      it_filter = pt_target_kostl
+    EXCEPTIONS
+      OTHERS    = 1.
+
+  CALL METHOD go_alv_send_recv->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space
+    EXCEPTIONS
+      OTHERS         = 1.
+
+  CALL METHOD go_alv_journal->set_filter_criteria
+    EXPORTING
+      it_filter = pt_target_kostl
+    EXCEPTIONS
+      OTHERS    = 1.
+
+  CALL METHOD go_alv_journal->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = space
+    EXCEPTIONS
+      OTHERS         = 1.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_screen_0500
+*&---------------------------------------------------------------------*
+FORM set_screen_0500 .
+  LOOP AT SCREEN.
+    IF gv_detail_sen_rec IS INITIAL.
+      IF screen-name = 'GO_TAB-SEND_RECV'.
+        screen-active    = '0'.
+        MODIFY SCREEN.
+      ENDIF.
+    ENDIF.
+
+    IF gv_detail_journal IS INITIAL.
+      IF screen-name = 'GO_TAB-JOURNAL'.
+        screen-active    = '0'.
+        MODIFY SCREEN.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form dipslay_journal_temp
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_journal_temp.
+
+  DATA: lv_docln   TYPE zte4fi0003-docln,
+        lv_doc_seq TYPE i VALUE 0.
+
+  DATA: BEGIN OF ls_bel_map,
+          s_kostl          TYPE zee4_co_kostl,
+          s_kostl_txt      TYPE zee4_co_ktext,
+          s_hkont_low      TYPE zte4co0013-s_hkont_low,
+          s_hkont_low_txt  TYPE zte4fi0001-txt20,
+          s_hkont_high     TYPE zte4co0013-s_hkont_high,
+          s_hkont_high_txt TYPE zte4fi0001-txt20,
+          belnr            TYPE zte4fi0002-belnr,
+        END OF ls_bel_map,
+        lt_bel_map LIKE TABLE OF ls_bel_map.
+
+  DATA: BEGIN OF ls_line_ctr,
+          belnr TYPE zte4fi0002-belnr,
+          ctr   TYPE i,
+        END OF ls_line_ctr,
+        lt_line_ctrs LIKE TABLE OF ls_line_ctr.
+
+  DATA: lt_debit_agg LIKE TABLE OF gs_journal,
+        ls_journal   LIKE gs_journal.
+
+  REFRESH: gt_journal, lt_bel_map, lt_line_ctrs, lt_debit_agg.
+
+  " 계정 마스터 테이블 조인 및 일괄 조회
+  IF gt_result IS NOT INITIAL.
+    SELECT c13~cycle,
+           c13~segm_no,
+           c13~s_hkont_low,
+           c13~s_hkont_high,
+           f1~txt20          AS s_hkont_low_txt,
+           f2~txt20          AS s_hkont_high_txt
+      FROM zte4co0013        AS c13
+      LEFT OUTER JOIN zte4fi0001 AS f1 ON c13~s_hkont_low  = f1~saknr
+      LEFT OUTER JOIN zte4fi0001 AS f2 ON c13~s_hkont_high = f2~saknr
+       FOR ALL ENTRIES IN @gt_result
+     WHERE c13~cycle   = @gt_result-cycle
+       AND c13~segm_no = @gt_result-segm_no
+      INTO TABLE @DATA(lt_orig_segments).
+
+    SORT lt_orig_segments BY cycle segm_no.
+  ENDIF.
+
+  " 송신처 + 계정범위 단위로 전표번호 매핑
+  LOOP AT gt_result INTO DATA(ls_res_init).
+    READ TABLE lt_orig_segments INTO DATA(ls_orig)
+         WITH KEY cycle   = ls_res_init-cycle
+                  segm_no = ls_res_init-segm_no
+         BINARY SEARCH.
+
+    IF sy-subrc = 0.
+      DATA(lv_orig_low)      = ls_orig-s_hkont_low.
+      DATA(lv_orig_high)     = ls_orig-s_hkont_high.
+      DATA(lv_orig_low_txt)  = ls_orig-s_hkont_low_txt.
+      DATA(lv_orig_high_txt) = ls_orig-s_hkont_high_txt.
+    ELSE.
+      lv_orig_low      = ls_res_init-s_hkont_low.
+      lv_orig_high     = ls_res_init-s_hkont_high.
+      lv_orig_low_txt  = ls_res_init-s_hkont_low_txt.
+      lv_orig_high_txt = ls_res_init-s_hkont_high_txt.
+    ENDIF.
+
+    READ TABLE lt_bel_map WITH KEY s_kostl      = ls_res_init-s_kostl
+                                   s_hkont_low  = lv_orig_low
+                                   s_hkont_high = lv_orig_high TRANSPORTING NO FIELDS.
+    IF sy-subrc NE 0.
+      lv_doc_seq = lv_doc_seq + 1.
+      APPEND VALUE #( s_kostl          = ls_res_init-s_kostl
+                      s_kostl_txt      = ls_res_init-s_kostl_txt
+                      s_hkont_low      = lv_orig_low
+                      s_hkont_low_txt  = lv_orig_low_txt
+                      s_hkont_high     = lv_orig_high
+                      s_hkont_high_txt = lv_orig_high_txt
+                      belnr            = |TEMP{ lv_doc_seq WIDTH = 6 ALIGN = RIGHT PAD = '0' }| ) TO lt_bel_map.
+    ENDIF.
+  ENDLOOP.
+
+  " 차변(수신) 데이터 사전 집계 수집
+  LOOP AT gt_result INTO DATA(ls_res).
+    READ TABLE lt_orig_segments INTO DATA(ls_orig_ch)
+         WITH KEY cycle   = ls_res-cycle
+                  segm_no = ls_res-segm_no
+         BINARY SEARCH.
+
+    IF sy-subrc = 0.
+      DATA(lv_low_chk)   = ls_orig_ch-s_hkont_low.
+      DATA(lv_high_chk)  = ls_orig_ch-s_hkont_high.
+    ELSE.
+      lv_low_chk  = ls_res-s_hkont_low.
+      lv_high_chk = ls_res-s_hkont_high.
+    ENDIF.
+
+    READ TABLE lt_bel_map INTO DATA(ls_map) WITH KEY s_kostl      = ls_res-s_kostl
+                                                     s_hkont_low  = lv_low_chk
+                                                     s_hkont_high = lv_high_chk.
+
+    CLEAR ls_journal.
+    ls_journal-belnr       = ls_map-belnr.
+    ls_journal-shkzg       = '차변(수신)'.
+    ls_journal-kstar       = ls_res-kstar.
+    ls_journal-kstar_txt   = ls_res-kstar_txt.
+    ls_journal-debit_amt   = ls_res-recv_amt.
+    ls_journal-waers       = ls_res-waers.
+    ls_journal-s_kostl     = ls_res-s_kostl.
+    ls_journal-s_kostl_txt = ls_res-s_kostl_txt.
+    ls_journal-r_kostl     = ls_res-r_kostl.
+    ls_journal-r_kostl_txt = ls_res-r_kostl_txt.
+    ls_journal-r_prctr     = ls_res-r_prctr.
+    ls_journal-r_prctr_txt = ls_res-r_prctr_txt.
+
+    COLLECT ls_journal INTO lt_debit_agg.
+  ENDLOOP.
+
+  " 집계 완료된 차변(수신) 라인에 전표 세부 번호 부여 및 반영
+  LOOP AT lt_debit_agg INTO ls_journal.
+    READ TABLE lt_line_ctrs ASSIGNING FIELD-SYMBOL(<fs_ctr>) WITH KEY belnr = ls_journal-belnr.
+    IF sy-subrc <> 0.
+      APPEND VALUE #( belnr = ls_journal-belnr ctr = 0 ) TO lt_line_ctrs.
+      READ TABLE lt_line_ctrs ASSIGNING <fs_ctr> WITH KEY belnr = ls_journal-belnr.
+    ENDIF.
+    <fs_ctr>-ctr = <fs_ctr>-ctr + 1.
+    ls_journal-docln = |{ <fs_ctr>-ctr WIDTH = 6 ALIGN = RIGHT PAD = '0' }|.
+    APPEND ls_journal TO gt_journal.
+  ENDLOOP.
+
+  " 대변(송신) 계정 범위 내의 계정 생성
+  LOOP AT lt_bel_map INTO ls_map.
+    LOOP AT gt_fi_base_costs INTO DATA(ls_base)
+         WHERE s_kostl = ls_map-s_kostl
+           AND racct  >= ls_map-s_hkont_low
+           AND racct  <= ls_map-s_hkont_high.
+
+      IF ls_base-total_wsl <> 0.
+        READ TABLE lt_line_ctrs ASSIGNING <fs_ctr> WITH KEY belnr = ls_map-belnr.
+        <fs_ctr>-ctr = <fs_ctr>-ctr + 1.
+        lv_docln = |{ <fs_ctr>-ctr WIDTH = 6 ALIGN = RIGHT PAD = '0' }|.
+
+        APPEND VALUE #(
+          belnr       = ls_map-belnr
+          docln       = lv_docln
+          shkzg       = '대변(송신)'
+          kstar       = ls_base-racct
+          kstar_txt   = ls_base-racct_txt
+          s_kostl     = ls_map-s_kostl
+          s_kostl_txt = ls_map-s_kostl_txt
+          waers       = 'KRW'
+          credit_amt  = ls_base-total_wsl
+        ) TO gt_journal.
+      ENDIF.
+    ENDLOOP.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form handle_subtotal_text
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> ES_SUBTOTTXT_INFO
+*&      --> EP_SUBTOT_LINE
+*&      --> E_EVENT_DATA
+*&---------------------------------------------------------------------*
+*FORM handle_subtotal_text  USING  ps_subtottxt_info TYPE lvc_s_stxt
+* po_subtot_line    TYPE REF TO data
+* po_event_data     TYPE REF TO cl_alv_event_data.
+*
+*ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_sort_journal_a
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_sort_journal_a .
+
+  REFRESH : gt_sort_journal.
+
+  gs_sort-fieldname = 'BELNR'.
+  gs_sort-spos      = 1.
+  gs_sort-up        = 'X'.
+  gs_sort-subtot    = 'X'.
+  gs_sort-expa      = 'X'.
+
+  APPEND gs_sort TO gt_sort_journal.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'DOCLN'.
+  gs_sort-spos      = 2.
+  gs_sort-up        = 'X'.
+
+  APPEND gs_sort TO gt_sort_journal.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'S_KOSTL_TXT'.
+  gs_sort-spos      = 3.
+  gs_sort-up        = 'X'.
+
+  APPEND gs_sort TO gt_sort_journal.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'SHKZG'.
+  gs_sort-spos      = 4.
+  gs_sort-up        = 'X'.
+
+  APPEND gs_sort TO gt_sort_journal.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'KSTAR_TXT'.
+  gs_sort-spos      = 5.
+  gs_sort-up        = 'X'.
+
+  APPEND gs_sort TO gt_sort_journal.
+  CLEAR  gs_sort.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_sort_send_recv_a
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_sort_send_recv_a .
+
+  REFRESH : gt_sort_send_recv.
+
+  " 송신 CC 명칭
+  gs_sort-fieldname = 'S_KOSTL_TXT'.
+  gs_sort-spos      = 1.
+  gs_sort-up        = 'X'.
+  gs_sort-subtot    = 'X'.
+  gs_sort-expa      = 'X'.
+  APPEND gs_sort TO gt_sort_send_recv.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'KSTAR_TXT'.
+  gs_sort-spos      = 2.
+  gs_sort-up        = 'X'.
+  APPEND gs_sort TO gt_sort_send_recv.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'S_HKONT_LOW_TXT'.
+  gs_sort-spos      = 3.
+  gs_sort-up        = 'X'.
+  APPEND gs_sort TO gt_sort_send_recv.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'SKF_TXT'.
+  gs_sort-spos      = 5.
+  gs_sort-up        = 'X'.
+  APPEND gs_sort TO gt_sort_send_recv.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'MEINS'.
+  gs_sort-spos      = 6.
+  gs_sort-up        = 'X'.
+  APPEND gs_sort TO gt_sort_send_recv.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'R_KOSTL_TXT'.
+  gs_sort-spos      = 7.
+  gs_sort-up        = 'X'.
+  APPEND gs_sort TO gt_sort_send_recv.
+  CLEAR  gs_sort.
+
+  gs_sort-fieldname = 'R_KOSTL_TXT'.
+  gs_sort-spos      = 8.
+  gs_sort-up        = 'X'.
+  APPEND gs_sort TO gt_sort_send_recv.
+  CLEAR  gs_sort.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_document_2
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_document_2 .
+
+  CREATE OBJECT go_document_result_2
+    EXPORTING
+      style            = 'ALV_TO_HTML'
+      background_color = 1
+      no_margins       = space.
+
+  PERFORM set_document_result_2 USING go_document_result_2.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_document_result_2
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> GO_DOCUMENT_RESULT_2
+*&---------------------------------------------------------------------*
+FORM set_document_result_2  USING po_document TYPE REF TO cl_dd_document.
+
+  DATA: lo_table      TYPE REF TO cl_dd_table_element,
+        lo_col1       TYPE REF TO cl_dd_area,
+        lo_col2       TYPE REF TO cl_dd_area,
+        lv_amt_char   TYPE c LENGTH 30,
+        lv_amt_string TYPE string,
+        lv_cycle_text TYPE string.
+
+  " 데이터 실시간 집계 (전체 금액, 리시버 수, CC/PC 배부 건수)
+  SELECT SUM( recv_amt ) AS total_amt,
+         COUNT( * )      AS receiver_cnt,
+         SUM( CASE WHEN r_kostl <> @space THEN 1 ELSE 0 END ) AS cc_cnt,
+         SUM( CASE WHEN r_kostl = @space AND r_prctr <> @space THEN 1 ELSE 0 END ) AS pc_cnt
+    FROM @gt_result AS mock
+    INTO @DATA(ls_agg).
+
+  " 송신 코스트센터 개수 집계
+  SELECT COUNT( DISTINCT s_kostl )
+    FROM @gt_result AS mock
+    INTO @DATA(lv_sender_cnt).
+
+  " 금액 포맷팅 및 기본 정보 추출
+  READ TABLE gt_result ASSIGNING FIELD-SYMBOL(<fs_first>) INDEX 1.
+
+  IF sy-subrc = 0.
+    " 통화 포맷 변환
+    WRITE ls_agg-total_amt TO lv_amt_char CURRENCY <fs_first>-waers.
+
+    " 공백 제거 및 통화 코드 결합
+    lv_amt_string = lv_amt_char.
+    CONDENSE lv_amt_string.
+    lv_amt_string = |{ lv_amt_string } { <fs_first>-waers }|.
+  ENDIF.
+
+  " ------------------------------------------------──────────
+  " DYNAMIC DOCUMENT 출력 영역
+  " ------------------------------------------------──────────
+  " ICON_CONTEXT_CLASS
+  " 타이틀 및 차트 아이콘 배치
+  po_document->add_icon( sap_icon = 'ICON_WD_BUSINESS_GRAPHICS' ). " @SK@
+  po_document->add_text(
+    text         = ' 배부 처리 결과 요약'
+* sap_style    = cl_dd_area=>heading
+    sap_emphasis = cl_dd_area=>strong
+  ).
+  po_document->new_line( ).
+  po_document->add_text( text = '───────────────────────────────────────────' ).
+  po_document->new_line( ).
+
+  " 레이아웃 테이블 정의
+  po_document->add_table(
+    EXPORTING
+      no_of_columns = 2
+      border        = '0'
+    IMPORTING
+      table         = lo_table
+  ).
+
+  lo_table->add_column( EXPORTING width = '30'  IMPORTING column = lo_col1 ).
+  lo_table->add_column( EXPORTING width = '1500' IMPORTING column = lo_col2 ).
+
+  " 기본 정보 배치
+  IF <fs_first> IS ASSIGNED.
+    lo_col1->add_icon( sap_icon = 'ICON_COMPANY_CODE' ).
+    lo_col2->add_text( text = | 관리회계 영역 : 0001 (EVERNITURE)| ).
+    lo_table->new_row( ).
+
+    " 실행된 고유 사이클 개수 파악을 위한 데이터 추출
+    SELECT DISTINCT cycle
+      FROM @gt_result AS mock
+      INTO TABLE @DATA(lt_run_cycle).
+
+    DATA(lv_cycle_qty) = lines( lt_run_cycle ).
+
+    " Cycle Text 조회
+    ASSIGN gt_cycle[ cycle = <fs_first>-cycle ] TO FIELD-SYMBOL(<fs_cy_txt>).
+
+    IF <fs_cy_txt> IS ASSIGNED.
+      " 구조체 내 실제 텍스트 필드명(예: cycl_txt 또는 ktext 등)으로 맞춰주세요
+      DATA(lv_cycle_txt_sh) = <fs_cy_txt>-ktext.
+    ENDIF.
+
+    " 사이클 개수에 따른 출력 텍스트 분기 처리
+    IF lv_cycle_qty > 1.
+      " 여러 개의 사이클이 실행되었을 때 (외 X개 형태)
+      DATA(lv_extra_cnt) = lv_cycle_qty - 1.
+      lv_cycle_text = | 실행 사이클   : { <fs_first>-cycle } ({ lv_cycle_txt_sh }) 외 { lv_extra_cnt }건|.
+    ELSE.
+      " 단일 사이클만 실행되었을 때
+      lv_cycle_text = | 실행 사이클   : { <fs_first>-cycle } ({ lv_cycle_txt_sh })|.
+    ENDIF.
+
+    " 화면 출력
+    lo_col1->add_icon( sap_icon = 'ICON_RELATION' ).
+    lo_col2->add_text( text = CONV #( lv_cycle_text ) ).
+    lo_table->new_row( ).
+  ENDIF.
+
+  " 처리 상태
+  IF gt_result_error IS INITIAL.
+    lo_col1->add_icon( sap_icon = 'ICON_OKAY' ).
+    lo_col2->add_text(
+      text         = 'Status: 정상 완료 (Error 0)'
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_positive
+    ).
+    lo_table->new_row( ).
+  ELSE.
+    DATA(lv_error_lines) = lines( gt_result_error ).
+
+    lo_col1->add_icon( sap_icon = 'ICON_CANCEL' ). " 또는 'ICON_FAILURE'
+    lo_col2->add_text(
+      text         = |Status: 오류 발생 (Error { lv_error_lines })|
+      sap_emphasis = cl_dd_area=>strong
+      sap_color    = cl_dd_area=>list_negative
+    ).
+    lo_table->new_row( ).
+  ENDIF.
+
+  " 줄바꿈 공백
+  lo_col1->add_text( text = '' ). lo_col2->add_text( text = '' ). lo_table->new_row( ).
+
+  " 배부 처리 통계
+  lo_col1->add_icon( sap_icon = 'ICON_REFERENCE_LIST' ).
+  lo_col2->add_text( text = '[배부 처리 통계]' sap_emphasis = cl_dd_area=>strong ).
+  IF sy-dynnr = '0500'.
+    lo_col2->add_gap( width = 10 ).
+  ELSE.
+    lo_table->new_row( ).
+  ENDIF.
+
+  lo_col1->add_text( text = '' ).
+  lo_col2->add_text( text = |• 총 송신(Sender) 코스트센터 수 : { lv_sender_cnt } 건| ).
+  IF sy-dynnr = '0500'.
+    lo_col2->add_gap( width = 10 ).
+  ELSE.
+    lo_table->new_row( ).
+  ENDIF.
+
+  lo_col1->add_text( text = '' ).
+  lo_col2->add_text( text = |• 총 수신(Receiver) 오브젝트 수 : { ls_agg-receiver_cnt } 건| ).
+  IF sy-dynnr = '0500'.
+    lo_col2->add_gap( width = 10 ).
+  ELSE.
+    lo_table->new_row( ).
+  ENDIF.
+
+  lo_col1->add_text( text = '' ).
+  lo_col2->add_text( text = |• 코스트센터(CC) 배부: { ls_agg-cc_cnt } 건| ).
+  IF sy-dynnr = '0500'.
+    lo_col2->add_gap( width = 10 ).
+  ELSE.
+    lo_table->new_row( ).
+  ENDIF.
+
+  " 손익센터 배부 내역 강조
+  lo_col1->add_text( text = '' ).
+  lo_col2->add_text(
+    text         = |- 손익센터(PC) 직행 배부: { ls_agg-pc_cnt } 건|
+    sap_emphasis = cl_dd_area=>strong
+    sap_color    = cl_dd_area=>list_key
+  ).
+  IF sy-dynnr = '0500'.
+    lo_col2->add_gap( width = 10 ).
+  ELSE.
+    lo_table->new_row( ).
+  ENDIF.
+
+  " 줄바꿈 공백
+  lo_col1->add_text( text = '' ). lo_col2->add_text( text = '' ). lo_table->new_row( ).
+
+  " 배부 금액 합계
+  lo_col1->add_icon( sap_icon = 'ICON_COST_COMPONENTS' ).
+  lo_col2->add_text( text = '[배부 금액 합계]' sap_emphasis = cl_dd_area=>strong ).
+  IF sy-dynnr = '0500'.
+    lo_col2->add_gap( width = 10 ).
+  ELSE.
+    lo_table->new_row( ).
+  ENDIF.
+
+  lo_col1->add_text( text = '' ).
+  lo_col2->add_text(
+    text         = |• 총 배부 금액 : { lv_amt_string }|
+    sap_emphasis = cl_dd_area=>strong
+    sap_color    = cl_dd_area=>list_total
+  ).
+  lo_table->new_row( ).
+
+  " 줄바꿈 공백
+  lo_col1->add_text( text = '' ). lo_col2->add_text( text = '' ). lo_table->new_row( ).
+
+  " 문서 병합 및 화면 출력
+  po_document->merge_document( ).
+  po_document->display_document(
+    EXPORTING
+      reuse_control = 'X'
+      parent        = go_cont_list
+  ).
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_alv
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_alv .
+
+  IF go_alv_send_recv IS BOUND.
+    REFRESH gt_send_recv.
+    go_alv_send_recv->refresh_table_display(
+        is_stable      = gs_stable
+      ).
+  ENDIF.
+
+  IF go_alv_journal IS BOUND.
+    REFRESH gt_journal.
+    go_alv_journal->refresh_table_display(
+        is_stable      = gs_stable
+      ).
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form refresh_subtotal
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM refresh_subtotal .
+
+  DATA: lt_sort_clear TYPE lvc_t_sort.
+
+  CALL METHOD go_alv_send_recv->set_sort_criteria
+    EXPORTING
+      it_sort = lt_sort_clear.
+
+  CALL METHOD go_alv_send_recv->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = ' '.
+
+  CALL METHOD go_alv_journal->set_sort_criteria
+    EXPORTING
+      it_sort = lt_sort_clear.
+
+  CALL METHOD go_alv_journal->refresh_table_display
+    EXPORTING
+      is_stable      = gs_stable
+      i_soft_refresh = ' '.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form save_allocation_extract
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM save_allocation_extract.
+
+  DATA: lt_insert  TYPE STANDARD TABLE OF zte4co0020,
+        ls_insert  TYPE zte4co0020,
+        lv_item_no TYPE zee4_co_item_no.
+
+  IF gt_result IS INITIAL.
+    MESSAGE '저장할 배부 결과 데이터가 없습니다.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  CLEAR: lt_insert.
+
+  LOOP AT gt_result INTO gs_result.
+    CLEAR: ls_insert.
+    lv_item_no = lv_item_no + 1.
+
+    ls_insert-extract_id = gv_extract_id.
+    ls_insert-item_no    = lv_item_no.
+
+    " 배부 결과 구조체 데이터 복사
+    MOVE-CORRESPONDING gs_result TO ls_insert.
+
+    zcl_e4_cm_time=>set_timestamp(
+      CHANGING
+        cs_record = ls_insert ).
+
+    APPEND ls_insert TO lt_insert.
+  ENDLOOP.
+
+  IF lt_insert IS NOT INITIAL.
+
+    INSERT zte4co0020 FROM TABLE lt_insert.
+
+    IF sy-subrc = 0.
+
+      COMMIT WORK.
+      MESSAGE s025 WITH '배부 추출 결과'.
+
+    ELSE.
+
+      ROLLBACK WORK.
+      MESSAGE s026 WITH '배부 추출 결과'.
+
+    ENDIF.
+  ENDIF.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

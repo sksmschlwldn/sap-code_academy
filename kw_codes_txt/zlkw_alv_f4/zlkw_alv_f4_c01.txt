@@ -1,0 +1,43 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_ALV_F4_C01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& Class lcl_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION FINAL.
+  PUBLIC SECTION.
+    METHODS :
+      handle_f4 FOR EVENT onf4 OF cl_gui_alv_grid
+        IMPORTING
+          e_fieldname
+          e_fieldvalue
+          es_row_no
+          er_event_data
+          et_bad_cells
+          e_display.
+
+ENDCLASS.
+*&---------------------------------------------------------------------*
+*& Class (Implementation) lcl_event_handler
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler IMPLEMENTATION.
+
+  METHOD handle_f4.
+
+    PERFORM handle_f4 USING e_fieldname
+                            e_fieldvalue
+                            es_row_no
+                            er_event_data
+                            et_bad_cells
+                            e_display.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

@@ -1,0 +1,9 @@
+*&---------------------------------------------------------------------*
+*& Include          ZLKW_TAB_CONTROL_RADIO_S01
+*&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK bl1 WITH FRAME TITLE TEXT-t01.
+  SELECT-OPTIONS : so_carr FOR scarr-carrid.
+SELECTION-SCREEN END OF BLOCK bl1.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758

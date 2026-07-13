@@ -1,0 +1,43 @@
+*&---------------------------------------------------------------------*
+*& Report ZLKW_RELATED_SEL_OPTION
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE zlkw_related_sel_param_top              .    " Global Data
+
+INCLUDE zlkw_related_sel_param_s01              .  " Selection Screen
+INCLUDE zlkw_related_sel_param_o01              .  " PBO-Modules
+INCLUDE zlkw_related_sel_param_i01              .  " PAI-Modules
+INCLUDE zlkw_related_sel_param_f01              .  " FORM-Routines
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR pa_conn.
+  PERFORM f4_connid.
+
+
+START-OF-SELECTION.
+  CALL SCREEN '0100'.
+
+*GUI Texts
+*----------------------------------------------------------
+* T0100 --> [C5] Input Parameter 의 입력된값에 맞는 서치헬프
+
+*Text elements
+*----------------------------------------------------------
+* T01 Selection Coindition
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_CARR D       .
+* PA_CONN D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: OO
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2026. Sap Release 758
